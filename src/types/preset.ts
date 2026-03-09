@@ -7,6 +7,7 @@ export interface Preset {
   beatsB: number;
   beatLevels: number[];   // Track B per-beat volume: 1.0 | 0.5 | 0.0
   accentsA: boolean[];    // Track A accent pattern
+  accentsB: boolean[];    // Track B accent pattern
   microAccents: boolean[];
   soundA: ClickSound;
   soundB: ClickSound;

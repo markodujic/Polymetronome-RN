@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.7.0] – 2026-03-09
+
+### Added
+- **Preset mini-grid preview** – each preset button now shows a compact dot-grid visualization of the stored beat pattern with accent coloring (orange = Track A, gold = Track B) instead of a text label. The ratio (e.g. `3:4`) and slot number are shown in the button header.
+- **Preset save mode** – a ✎ button next to the preset row activates save mode. In save mode clicking any slot saves the current state there, then auto-exits. No more broken long-press on web.
+
+### Changed
+- **KaraokeBar font** – syllable text now uses `fontWeight: '700'`, `textTransform: 'uppercase'`, `letterSpacing: 1/2` to match the MICRO/PULSE label style.
+- **CircleViz karaoke text** – replaced `SvgText` in the SVG center with an absolutely-positioned React Native `Text` overlay, giving identical font rendering to KaraokeBar. Added the same scale 1.25→1 + glow pulse animation on each beat flash.
+- **CircleViz responder warnings fixed** – removed `onPress` from `<G>` SVG element (leaked `onStartShouldSetResponder`, `onResponderGrant` etc. to the DOM); phrase-cycle tap now uses a transparent `Pressable` overlay above the SVG.
+- **RhythmTrack** – `onSound` prop and sound dropdown picker fully removed; sound selection moved to SettingsSheet.
+- **Web deprecation warnings fixed** – `textShadow*` style props (KaraokeBar) guarded with `Platform.OS !== 'web'`; `pointerEvents` prop moved to `style` object in GlowSlider and PolyCanvas; `shadow*` props in App.tsx replaced with `Platform.select({ native: …, web: { boxShadow } })`.
+
+---
+
+## [1.6.1] – 2026-03-09
+
+### Fixed
+- **KaraokeBar animation crash** – `Animated.parallel()` with mixed `useNativeDriver: true/false` is rejected at runtime on native targets; split into two separate `Animated.timing().start()` calls (scale uses native driver, glow uses JS driver).
+- **Duplicate karaoke flash** – when Track A and Track B beats coincide in a single render cycle, `flashKey` was incremented twice, restarting the scale/glow animation mid-transition; added a 30 ms `lastFlashMsRef` debounce so the animation fires at most once per coincident beat pair.
+- **`accentsB` missing from `Preset` type** – Track B accent pattern was never persisted; added `accentsB: boolean[]` to the `Preset` interface, `makeDefault()`, `savePreset`, and `loadPreset`.
+- **`AudioEngine.fireBeat` stale-callback leak** – `setTimeout` callbacks fired after `dispose()` / `stop()`, causing state updates on an unmounted component; pending timers now tracked in `pendingBeatTimers[]` and cleared in `stop()`.
+
+---
+
 ## [1.6.0] – 2026-03-09
 
 ### Added

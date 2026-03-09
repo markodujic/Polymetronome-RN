@@ -20,6 +20,7 @@ function makeDefault(
     beatsB,
     beatLevels: Array(beatsB).fill(1) as number[],
     accentsA: Array.from({ length: beatsA }, (_, i) => i === 0),
+    accentsB: Array.from({ length: beatsB }, (_, i) => i === 0),
     microAccents: Array(lcm(beatsA, beatsB)).fill(false) as boolean[],
     soundA: 'sine-high',
     soundB: 'sine-low',

@@ -2,7 +2,7 @@ import './global.css';
 import { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, useWindowDimensions, Alert, Pressable,
+  StyleSheet, useWindowDimensions, Pressable, Platform,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -17,6 +17,40 @@ import { CircleViz } from './src/components/CircleViz';
 import { KaraokeBar } from './src/components/KaraokeBar';
 import { SettingsSheet } from './src/components/SettingsSheet';
 import type { ClickSound } from './src/audio/AudioEngine';
+
+function PresetMiniGrid({ beatsA, beatsB, accentsA, accentsB, slotNum }: {
+  beatsA: number; beatsB: number;
+  accentsA: boolean[]; accentsB: boolean[];
+  slotNum: number;
+}) {
+  return (
+    <View style={pgStyles.wrapper}>
+      <View style={pgStyles.header}>
+        <Text style={pgStyles.ratio}>{beatsA}:{beatsB}</Text>
+        <Text style={pgStyles.slotNum}>{slotNum}</Text>
+      </View>
+      <View style={pgStyles.row}>
+        {Array.from({ length: beatsA }, (_, i) => (
+          <View key={i} style={[pgStyles.dot, { backgroundColor: (accentsA[i] ?? false) ? '#ff6b35' : 'rgba(255,107,53,0.55)' }]} />
+        ))}
+      </View>
+      <View style={pgStyles.row}>
+        {Array.from({ length: beatsB }, (_, i) => (
+          <View key={i} style={[pgStyles.dot, { backgroundColor: (accentsB[i] ?? false) ? '#e8aa14' : 'rgba(232,170,20,0.55)' }]} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const pgStyles = StyleSheet.create({
+  wrapper: { width: '100%', paddingHorizontal: 5, paddingVertical: 3 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
+  ratio: { color: '#c0c8d8', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
+  slotNum: { color: '#5a6080', fontSize: 8, fontWeight: '700' },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginBottom: 2 },
+  dot: { width: 4, height: 4, borderRadius: 1 },
+});
 
 export default function App() {
   const {
@@ -39,10 +73,33 @@ export default function App() {
   const [karaokeOn, setKaraokeOn] = useState(true);
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [customPhrases, setCustomPhrases] = useState<Record<number, string>>({});
+  const [isSaveMode, setIsSaveMode] = useState(false);
+  const [savedSlotIdx, setSavedSlotIdx] = useState<number | null>(null);
+  const savedSlotTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleCustomPhrase = useCallback((sylCount: number, text: string) => {
     setCustomPhrases(prev => ({ ...prev, [sylCount]: text }));
   }, []);
+
+  const handleSaveToSlot = useCallback((i: number) => {
+    savePreset(i, {
+      bpm,
+      beatsA: trackA.beats,
+      beatsB: trackB.beats,
+      beatLevels: trackB.beatLevels,
+      accentsA: trackA.accents,
+      accentsB: trackB.accents,
+      microAccents,
+      soundA: trackA.sound,
+      soundB: trackB.sound,
+      volumeA,
+      volumeB,
+    });
+    setSavedSlotIdx(i);
+    setIsSaveMode(false);
+    if (savedSlotTimer.current) clearTimeout(savedSlotTimer.current);
+    savedSlotTimer.current = setTimeout(() => setSavedSlotIdx(null), 1200);
+  }, [bpm, trackA, trackB, microAccents, volumeA, volumeB, savePreset]);
 
   // Mute toggle refs
   const prevVolARef = useRef(0.8);
@@ -121,56 +178,56 @@ export default function App() {
       </View>
 
       {/* Preset canvas */}
-      <View style={styles.presetCanvas}>
-        {presets.map((p, i) => (
-          <Pressable
-            key={i}
-            style={({ pressed }) => [
-              styles.presetBtn,
-              pressed && styles.presetBtnPressed,
-            ]}
-            onPress={() => loadPreset(p)}
-            onLongPress={() => {
-              const newLabel = `${trackA.beats}:${trackB.beats} @ ${bpm}`;
-              Alert.alert(
-                'Preset speichern',
-                `Slot ${i + 1} mit dem aktuellen Muster überschreiben?\n"${newLabel}"`,
-                [
-                  { text: 'Abbrechen', style: 'cancel' },
-                  {
-                    text: 'Speichern',
-                    onPress: () => savePreset(i, {
-                      bpm,
-                      beatsA: trackA.beats,
-                      beatsB: trackB.beats,
-                      beatLevels: trackB.beatLevels,
-                      accentsA: trackA.accents,
-                      microAccents,
-                      soundA: trackA.sound,
-                      soundB: trackB.sound,
-                      volumeA,
-                      volumeB,
-                    }),
-                  },
-                ],
-              );
-            }}
-            delayLongPress={350}
-            accessibilityLabel={p.label}
-          >
-            <Text style={styles.presetLabel}>{p.label}</Text>
-            <Text style={styles.presetSub}>{p.beatsA}:{p.beatsB}</Text>
-          </Pressable>
-        ))}
+      <View style={styles.presetRow}>
+        <View style={styles.presetCanvas}>
+          {presets.map((p, i) => (
+            <Pressable
+              key={i}
+              style={({ pressed }) => [
+                styles.presetBtn,
+                isSaveMode && styles.presetBtnSaveMode,
+                savedSlotIdx === i && styles.presetBtnSaved,
+                pressed && styles.presetBtnPressed,
+              ]}
+              onPress={() => isSaveMode ? handleSaveToSlot(i) : loadPreset(p)}
+              accessibilityLabel={isSaveMode ? `In Slot ${i + 1} speichern` : p.label}
+            >
+              {savedSlotIdx === i ? (
+                <Text style={styles.presetLabelSaved}>✓</Text>
+              ) : isSaveMode ? (
+                <Text style={styles.presetLabelSaveMode}>{i + 1}</Text>
+              ) : (
+                <PresetMiniGrid
+                  beatsA={p.beatsA}
+                  beatsB={p.beatsB}
+                  accentsA={p.accentsA ?? []}
+                  accentsB={p.accentsB ?? []}
+                  slotNum={i + 1}
+                />
+              )}
+            </Pressable>
+          ))}
+        </View>
+        <Pressable
+          style={({ pressed }) => [
+            styles.presetSaveToggle,
+            isSaveMode && styles.presetSaveToggleActive,
+            pressed && styles.presetBtnPressed,
+          ]}
+          onPress={() => setIsSaveMode(v => !v)}
+          accessibilityLabel={isSaveMode ? 'Speichern abbrechen' : 'Preset speichern'}
+        >
+          <Text style={styles.presetSaveToggleIcon}>{isSaveMode ? '✕' : '✎'}</Text>
+        </Pressable>
       </View>
 
       {/* Tracks */}
       <RhythmTrack label="A" track={trackA} isMaster isSelected={focusedTrack === 'A'}
         volume={volumeA} onSelect={() => setFocusedTrack('A')}
-        onBeats={setBeatsA} onVolume={setVolA} onMute={muteA} onSound={setSoundA} />
+        onBeats={setBeatsA} onVolume={setVolA} onMute={muteA} />
       <RhythmTrack label="B" track={trackB} isMaster={false} isSelected={focusedTrack === 'B'}
         volume={volumeB} onSelect={() => setFocusedTrack('B')}
-        onBeats={setBeatsB} onVolume={setVolB} onMute={muteB} onSound={setSoundB} />
+        onBeats={setBeatsB} onVolume={setVolB} onMute={muteB} />
 
       {/* View toggle */}
       <View style={styles.viewToggle}>
@@ -483,26 +540,41 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   // Preset canvas
+  presetRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    backgroundColor: BG2,
+  },
   presetCanvas: {
+    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 10,
     paddingVertical: 8,
     gap: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-    backgroundColor: BG2,
   },
   presetBtn: {
     flex: 1,
     minWidth: '22%',
-    paddingVertical: 7,
+    paddingVertical: 3,
     borderRadius: 8,
     backgroundColor: BG3,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: BORDER,
+    overflow: 'hidden',
+  },
+  presetBtnSaveMode: {
+    borderStyle: 'dashed' as const,
+    borderColor: '#c8a000',
+  },
+  presetBtnSaved: {
+    borderStyle: 'solid' as const,
+    borderColor: '#22c55e',
+    backgroundColor: '#0d2a1a',
   },
   presetBtnPressed: {
     backgroundColor: '#2a3050',
@@ -514,10 +586,36 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
+  presetLabelSaveMode: {
+    color: '#f0c040',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  presetLabelSaved: {
+    color: '#22c55e',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   presetSub: {
     color: '#5a6080',
     fontSize: 10,
     marginTop: 1,
+  },
+  presetSaveToggle: {
+    width: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: BG3,
+    borderLeftWidth: 1,
+    borderLeftColor: BORDER,
+  },
+  presetSaveToggleActive: {
+    backgroundColor: '#2a2000',
+    borderLeftColor: '#c8a000',
+  },
+  presetSaveToggleIcon: {
+    color: '#c8a000',
+    fontSize: 18,
   },
   // View toggle
   viewToggle: {
@@ -614,15 +712,25 @@ const styles = StyleSheet.create({
     backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
+    ...Platform.select({
+      native: {
+        shadowColor: ACCENT,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 12,
+      },
+      web: {
+        boxShadow: `0 0 12px ${ACCENT}80`,
+      },
+    }),
     elevation: 8,
   },
   playBtnActive: {
     backgroundColor: '#7dd3fc',
-    shadowColor: '#7dd3fc',
+    ...Platform.select({
+      native: { shadowColor: '#7dd3fc' },
+      web: { boxShadow: '0 0 12px #7dd3fc80' },
+    }),
   },
   playBtnLandscape: {
     width: '80%',

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { type MetronomeTrack } from '../audio/AudioEngine';
 
 function _gcd(a: number, b: number): number { return b === 0 ? a : _gcd(b, a % b); }
@@ -127,6 +127,7 @@ export function useKaraokeSyllable(
   const [phraseIdx, setPhraseIdx] = useState(0);
   const [activeSylIdx, setActiveSylIdx] = useState<number | null>(null);
   const [flashKey, setFlashKey] = useState(0);
+  const lastFlashMsRef = useRef(0);
 
   const currentPhrase = phrases[phraseIdx % phrases.length];
 
@@ -136,14 +137,22 @@ export function useKaraokeSyllable(
   useEffect(() => {
     if (activeBeatA !== null && aToSyl[activeBeatA] !== undefined) {
       setActiveSylIdx(aToSyl[activeBeatA]);
-      setFlashKey(k => k + 1);
+      const now = Date.now();
+      if (now - lastFlashMsRef.current > 30) {
+        lastFlashMsRef.current = now;
+        setFlashKey(k => k + 1);
+      }
     }
   }, [activeBeatA, aToSyl]);
 
   useEffect(() => {
     if (activeBeatB !== null && bToSyl[activeBeatB] !== undefined) {
       setActiveSylIdx(bToSyl[activeBeatB]);
-      setFlashKey(k => k + 1);
+      const now = Date.now();
+      if (now - lastFlashMsRef.current > 30) {
+        lastFlashMsRef.current = now;
+        setFlashKey(k => k + 1);
+      }
     }
   }, [activeBeatB, bToSyl]);
 

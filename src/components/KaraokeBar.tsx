@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Animated, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Animated, StyleSheet, Platform } from 'react-native';
 import { useKaraokeSyllable } from '../hooks/useKaraokeSyllable';
 import { type MetronomeTrack } from '../audio/AudioEngine';
 
@@ -37,10 +37,9 @@ export function KaraokeBar({
       prevFlashKey.current = flashKey;
       scaleAnim.setValue(1.25);
       glowAnim.setValue(1);
-      Animated.parallel([
-        Animated.timing(scaleAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
-        Animated.timing(glowAnim, { toValue: 0, duration: 300, useNativeDriver: false }),
-      ]).start();
+      // Run separately – parallel() does not allow mixing useNativeDriver true/false
+      Animated.timing(scaleAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(glowAnim, { toValue: 0, duration: 300, useNativeDriver: false }).start();
     }
   }, [flashKey, isActive, scaleAnim, glowAnim]);
 
@@ -62,7 +61,7 @@ export function KaraokeBar({
                 { color: textColor },
                 isLong && styles.syllableLong,
                 !isPlaying && styles.syllablePreview,
-                {
+                Platform.OS !== 'web' && {
                   textShadowColor: 'rgba(125, 211, 252, 0.9)',
                   textShadowOffset: { width: 0, height: 0 },
                   textShadowRadius: shadowRadius,
@@ -94,12 +93,13 @@ const styles = StyleSheet.create({
   syllable: {
     fontSize: 28,
     fontWeight: '700',
-    letterSpacing: 2,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
     textAlign: 'center',
     lineHeight: 36,
   },
   syllableLong: {
-    letterSpacing: 4,
+    letterSpacing: 2,
   },
   syllablePreview: {
     opacity: 0.4,

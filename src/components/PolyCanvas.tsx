@@ -61,9 +61,9 @@ function PulseGlow({ delay, intensity }: { delay: number; intensity: number }) {
           backgroundColor: '#7dd3fc',
           borderRadius: 3,
           opacity,
+          pointerEvents: 'none' as any,
         },
       ]}
-      pointerEvents="none"
     />
   );
 }

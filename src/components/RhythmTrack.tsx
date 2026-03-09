@@ -1,14 +1,7 @@
 import { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { GlowSlider } from './GlowSlider';
-import { Picker } from '@react-native-picker/picker';
-import type { MetronomeTrack, ClickSound } from '../audio/AudioEngine';
-
-const SOUND_OPTIONS: { value: ClickSound; label: string }[] = [
-  { value: 'sine-low', label: 'Low' },
-  { value: 'sine-mid', label: 'Mid' },
-  { value: 'sine-high', label: 'High' },
-];
+import type { MetronomeTrack } from '../audio/AudioEngine';
 
 interface RhythmTrackProps {
   label: string;
@@ -20,7 +13,6 @@ interface RhythmTrackProps {
   onBeats: (beats: number) => void;
   onVolume: (v: number) => void;
   onMute?: () => void;
-  onSound?: (sound: ClickSound) => void;
 }
 
 export const RhythmTrack = memo(function RhythmTrack({
@@ -33,7 +25,6 @@ export const RhythmTrack = memo(function RhythmTrack({
   onBeats,
   onVolume,
   onMute,
-  onSound,
 }: RhythmTrackProps) {
   const accentColor = isMaster ? '#ff6b35' : '#e8aa14';
 
@@ -73,28 +64,6 @@ export const RhythmTrack = memo(function RhythmTrack({
           minimumTrackTintColor={volume === 0 ? '#444' : accentColor}
           maximumTrackTintColor="#444"
         />
-
-        {onSound && (
-          <View style={styles.pickerWrap}>
-            <Picker
-              selectedValue={track.sound}
-              onValueChange={(v) => onSound(v as ClickSound)}
-              style={styles.picker}
-              dropdownIconColor="#aaa"
-              mode="dropdown"
-            >
-              {SOUND_OPTIONS.map((s) => (
-                <Picker.Item
-                  key={s.value}
-                  label={s.label}
-                  value={s.value}
-                  color="#e0e0e0"
-                  style={{ backgroundColor: '#1a1a1a' }}
-                />
-              ))}
-            </Picker>
-          </View>
-        )}
       </View>
     </View>
   );
@@ -157,15 +126,5 @@ const styles = StyleSheet.create({
   },
   muteIcon: {
     fontSize: 15,
-  },
-  pickerWrap: {
-    width: 82,
-    backgroundColor: BG3,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  picker: {
-    color: '#8892b0',
-    height: 32,
   },
 });

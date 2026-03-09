@@ -75,7 +75,7 @@ audioEngine.start({
 ```
 
 ### `audioEngine.stop(): void`
-Stops playback.
+Stops playback. Also cancels all pending `fireBeat` setTimeout callbacks to prevent stale state updates after unmount/dispose.
 
 ### `audioEngine.setMasterBpm(bpm: number): void`
 Live BPM change during playback. Proportionally scales remaining time to the

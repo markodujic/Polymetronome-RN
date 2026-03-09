@@ -225,6 +225,7 @@ export function useMetronome() {
     const newB: MetronomeTrack = {
       ...trackBRef.current,
       beats: clampedBeatsB,
+      accents: Array.from({ length: clampedBeatsB }, (_, i) => (preset.accentsB ?? [])[i] ?? (i === 0)),
       beatLevels: Array.from({ length: clampedBeatsB }, (_, i) => preset.beatLevels[i] ?? 1),
       sound: preset.soundB,
       volume: preset.volumeB,

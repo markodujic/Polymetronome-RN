@@ -67,6 +67,7 @@ class AudioEngine {
   private _isPlaying = false;
   private schedulerTimer: ReturnType<typeof setTimeout> | null = null;
   private onBeat: BeatCallback | null = null;
+  private pendingBeatTimers: ReturnType<typeof setTimeout>[] = [];
 
   /* ---- grid config ---- */
   private masterBpm = 120;
@@ -171,6 +172,8 @@ class AudioEngine {
       clearTimeout(this.schedulerTimer);
       this.schedulerTimer = null;
     }
+    for (const t of this.pendingBeatTimers) clearTimeout(t);
+    this.pendingBeatTimers = [];
     for (const osc of this.activePulseOscs) {
       try { osc.stop(); } catch { /* already stopped */ }
     }
@@ -345,7 +348,12 @@ class AudioEngine {
   private fireBeat(trackId: number, beatIndex: number, time: number): void {
     if (!this.onBeat || !this.ctx) return;
     const ms = Math.max(0, (time - this.ctx.currentTime) * 1000);
-    setTimeout(() => this.onBeat!(beatIndex, time, trackId), ms);
+    const t = setTimeout(() => {
+      const idx = this.pendingBeatTimers.indexOf(t);
+      if (idx !== -1) this.pendingBeatTimers.splice(idx, 1);
+      this.onBeat?.(beatIndex, time, trackId);
+    }, ms);
+    this.pendingBeatTimers.push(t);
   }
 
   private schedulePulse(startTime: number, endTime: number): void {

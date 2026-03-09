@@ -63,6 +63,8 @@ Root component. Holds `focusedTrack: 'A' | 'B'`, `viewMode`, `karaokeOn` state.
 | `focusedTrack` | `'A' \| 'B'` | Which track is visually enlarged |
 | `viewMode` | `'raster' \| 'circle'` | Toggle between Mikroraster and Circle view |
 | `karaokeOn` | `boolean` | Whether karaoke syllable display is active |
+| `isSaveMode` | `boolean` | When true, clicking a preset slot saves current state there |
+| `savedSlotIdx` | `number \| null` | Index of last saved slot (shows ✓ for 1.2 s) |
 
 ---
 
@@ -72,9 +74,8 @@ Compact single-row control for one track:
 - Beat stepper (− / count / +)
 - Mute icon (🔊/🔇)
 - `GlowSlider` volume slider – halo scales with volume value
-- Sound selector dropdown (3 sine sounds: Low / Mid / High)
 
-Props: `label`, `track`, `isMaster`, `isSelected`, `volume`, `onSelect`, `onBeats`, `onVolume`, `onMute`, `onSound`
+Props: `label`, `track`, `isMaster`, `isSelected`, `volume`, `onSelect`, `onBeats`, `onVolume`, `onMute`
 
 ---
 
@@ -129,21 +130,27 @@ Props: `trackA`, `trackB`, `activeBeatA`, `activeBeatB`, `isPlaying`, `focusedTr
 ### `CircleViz`
 SVG-based polyrhythm visualizer with two concentric annular rings (Track A outer, Track B inner), comet-tail sweep animation, and an accent gap ring.
 
-When `karaokeOn` is true, displays the active karaoke syllable as a `<text>` element in the center of the circle with a pulse animation. A 💬 toggle button is rendered as an absolutely-positioned DOM button over the SVG container.
+When `karaokeOn` is true, displays the active karaoke syllable as an absolutely-positioned React Native `Text` overlay in the center of the SVG container (not `SvgText`). This ensures identical font rendering to `KaraokeBar`. The same scale 1.25→1 + `#7dd3fc` glow pulse animation fires on each beat. A transparent `Pressable` overlay handles phrase-cycle taps (replacing `onPress` on `<G>` which leaked Responder event props to the DOM on web).
 
-Props: `trackA`, `trackB`, `activeBeatA`, `activeBeatB`, `isPlaying`, `beatIntervalSec`, `microAccents`, `karaokeOn?`, `onToggleKaraoke?`
+Props: `trackA`, `trackB`, `activeBeatA`, `activeBeatB`, `isPlaying`, `beatIntervalSec`, `microAccents`, `karaokeOn?`
 
 ---
 
 ### `KaraokeBar`
-Standalone karaoke bar rendered below the Mikroraster (Raster view only). Thin wrapper around `useKaraokeSyllable` hook. Shows the current syllable with a pulse animation on each beat. Toggle button (💬) to enable/disable.
+Standalone karaoke bar rendered below the Mikroraster (Raster view only). Thin wrapper around `useKaraokeSyllable` hook. Shows the current syllable with scale 1.25→1 + `#7dd3fc` text-shadow animation on each beat.
 
-Props: `trackA`, `trackB`, `activeBeatA`, `activeBeatB`, `isPlaying`, `karaokeOn`, `onToggleKaraoke`
+**Font style:** `fontWeight: '700'`, `textTransform: 'uppercase'`, `letterSpacing: 1` (normal) / `2` (long syllable) — matches the MICRO/PULSE label style.
+
+**Animation note:** Scale animation uses `useNativeDriver: true`; glow animation uses `useNativeDriver: false`. They are run as two separate `Animated.timing().start()` calls (not `Animated.parallel`) because React Native forbids mixing native and JS drivers in a single parallel group.
+
+Props: `trackA`, `trackB`, `activeBeatA`, `activeBeatB`, `isPlaying`, `karaokeOn`, `customPhrases?`
 
 ---
 
 ### `useKaraokeSyllable` (hook)
-Shared hook encapsulating all karaoke logic. Computes the union of Track A and Track B beat positions in the LCM grid, maps each union position to a syllable index, detects long syllables (CAPS), manages phrase selection/cycling, tracks active syllable index, and provides a `flashKey` for animation remounting.
+Shared hook encapsulating all karaoke logic. Computes the union of Track A and Track B beat positions in the LCM grid, maps each union position to a syllable index, detects long syllables (CAPS), manages phrase selection/cycling, tracks active syllable index, and provides a `flashKey` for animation triggering.
+
+**Flash debounce:** When Track A and Track B beats coincide in the same render cycle, `flashKey` is only incremented once per 30 ms window (`lastFlashMsRef`) to avoid restarting the animation twice mid-transition.
 
 Used by both `CircleViz` and `KaraokeBar`.
 
@@ -196,6 +203,26 @@ useRef:   trackBRef    – always-current snapshot
 ## Data Types
 
 ```ts
+### `Preset` type
+```ts
+interface Preset {
+  label: string;
+  bpm: number;
+  beatsA: number;
+  beatsB: number;
+  beatLevels: number[];    // Track B per-beat volume: 1.0 | 0.5 | 0.0
+  accentsA: boolean[];     // Track A accent pattern
+  accentsB: boolean[];     // Track B accent pattern (added v1.6.1)
+  microAccents: boolean[];
+  soundA: ClickSound;
+  soundB: ClickSound;
+  volumeA: number;
+  volumeB: number;
+}
+```
+
+---
+
 interface MetronomeTrack {
   id: number;
   bpm: number;           // 20–300

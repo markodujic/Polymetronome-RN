@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, useWindowDimensions } from 'react-native';
-import Svg, { G, Path, Circle, Text as SvgText } from 'react-native-svg';
+import { View, TouchableOpacity, Text, Pressable, Animated, Platform, StyleSheet, useWindowDimensions } from 'react-native';
+import Svg, { G, Path, Circle } from 'react-native-svg';
 import { type MetronomeTrack } from '../audio/AudioEngine';
 import { useKaraokeSyllable } from '../hooks/useKaraokeSyllable';
 
@@ -195,6 +195,22 @@ export function CircleViz({
 
   const sylColor = kar.typeCls === 'a' ? COLORS.sylA : kar.typeCls === 'b' ? COLORS.sylB : COLORS.sylAB;
 
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  const prevFlashKey = useRef(kar.flashKey);
+
+  useEffect(() => {
+    if (kar.flashKey !== prevFlashKey.current && kar.isActive) {
+      prevFlashKey.current = kar.flashKey;
+      scaleAnim.setValue(1.25);
+      glowAnim.setValue(1);
+      Animated.timing(scaleAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(glowAnim, { toValue: 0, duration: 300, useNativeDriver: false }).start();
+    }
+  }, [kar.flashKey, kar.isActive, scaleAnim, glowAnim]);
+
+  const shadowRadius = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 10] });
+
   return (
     <View style={styles.outerWrapper}>
     <View style={[styles.container, { width: vizSize, height: vizSize }]}>
@@ -227,25 +243,35 @@ export function CircleViz({
         {!karaokeOn && (
           <Circle cx={CX} cy={CY} r={5} fill={COLORS.centerPivot} />
         )}
-        {karaokeOn && (
-          <G onPress={kar.cyclePhrase}>
-            <SvgText
-              key={kar.isActive ? `k-${kar.flashKey}` : 'k'}
-              x={CX}
-              y={CY}
-              textAnchor="middle"
-              alignmentBaseline="central"
-              fill={sylColor}
-              fontSize={kar.isLong ? 28 : 24}
-              fontWeight="bold"
-              opacity={kar.isActive ? 1 : 0.35}
-            >
-              {kar.text}
-            </SvgText>
-          </G>
-        )}
       </Svg>
 
+      {karaokeOn && (
+        <>
+          <View style={styles.karTextWrapper}>
+            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+              <Animated.Text
+                style={[
+                  styles.karSyllable,
+                  kar.isLong && styles.karSyllableLong,
+                  { color: sylColor, opacity: kar.isActive ? 1 : 0.35 },
+                  Platform.OS !== 'web' && {
+                    textShadowColor: 'rgba(125, 211, 252, 0.9)',
+                    textShadowOffset: { width: 0, height: 0 },
+                    textShadowRadius: shadowRadius,
+                  },
+                ]}
+              >
+                {kar.text?.toUpperCase()}
+              </Animated.Text>
+            </Animated.View>
+          </View>
+          <Pressable
+            style={styles.karaokeCenterTap}
+            onPress={kar.cyclePhrase}
+            accessibilityLabel="Phrase wechseln"
+          />
+        </>
+      )}
     </View>
     </View>
   );
@@ -256,6 +282,35 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     position: 'relative',
     backgroundColor: '#0f0f0f',
+  },
+  karTextWrapper: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    pointerEvents: 'none' as any,
+  },
+  karSyllable: {
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+    textAlign: 'center',
+  },
+  karSyllableLong: {
+    fontSize: 28,
+    letterSpacing: 2,
+  },
+  karaokeCenterTap: {
+    position: 'absolute',
+    width: '32%',
+    height: '32%',
+    left: '34%',
+    top: '34%',
+    borderRadius: 999,
   },
   outerWrapper: {
     flex: 1,

@@ -40,7 +40,6 @@ export function GlowSlider({
     >
       {trackWidth > 0 && !muted && fraction > 0 && (
         <View
-          pointerEvents="none"
           style={{
             position: 'absolute',
             width: 36,
@@ -50,6 +49,7 @@ export function GlowSlider({
             opacity: 0.15 + fraction * 0.35,
             left: thumbCenterX - 18,
             top: (sliderHeight - 36) / 2,
+            pointerEvents: 'none' as any,
           }}
         />
       )}

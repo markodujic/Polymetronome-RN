@@ -9,8 +9,8 @@
 - [x] **Pulse tone** – rising oscillator between Track A beats with volume and frequency control
 - [x] **3-state beat levels** – per-beat volume toggle (100%/50%/0%) for Track B
 - [x] **Responsive no-scroll layout** – fits 100dvh, safe-area support
-- [ ] **Preset system** – save and load named polyrhythm configurations to `localStorage`
-- [x] **Preset canvas** – 8 one-tap hardcoded presets (4/4, 3/4, 6/8, 5/4, 3:2, 4:3, 5:3, 7:4) set BPM + both beat counts
+- [x] **Preset system** – save and load polyrhythm configurations; save mode via ✎ button (replaces long-press for web compatibility)
+- [x] **Preset canvas** – 8 one-tap hardcoded presets (4/4, 3/4, 6/8, 5/4, 3:2, 4:3, 5:3, 7:4) set BPM + both beat counts; mini-grid preview shows stored pattern
 
 ### Medium Priority
 - [ ] **Metronome swing** – swing/shuffle percentage slider for Track A
@@ -32,6 +32,24 @@
 
 - [ ] On iOS Safari, rapid double-taps on the Play button can occasionally produce a delayed first beat
 - [ ] At very high BPM (>240) with large beat counts the LCM grid in `PolyCanvas` can become very dense (e.g. 5:7 = 35 cells) and individual cells visually very narrow on small screens
+
+---
+
+## Recently Fixed (1.7.0)
+
+- [x] **Preset save broken on web** – `onLongPress` doesn't fire with mouse; replaced with ✎ edit-mode button
+- [x] **Preset buttons cluttered** – replaced text label + ratio text with dot-grid mini-preview + ratio header
+- [x] **CircleViz karaoke font mismatch** – replaced `SvgText` with RN `Text` overlay
+- [x] **CircleViz karaoke no pulse** – added identical scale + glow animation as in KaraokeBar
+- [x] **CircleViz responder prop warnings** – removed `onPress` from `<G>`, use `Pressable` overlay instead
+- [x] **Web deprecation warnings** – `textShadow*`, `pointerEvents` prop, `shadow*` props
+
+## Recently Fixed (1.6.1)
+
+- [x] **KaraokeBar native crash** – `Animated.parallel` mixed `useNativeDriver` values; split into separate calls
+- [x] **Duplicate karaoke flash on coincident beats** – 30 ms debounce via `lastFlashMsRef`
+- [x] **`accentsB` not persisted in presets** – added to `Preset` type, save, load
+- [x] **`fireBeat` callbacks after dispose** – pending timers now cleared in `stop()`
 
 ---
 
