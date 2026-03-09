@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, { G, Path, Circle, Text as SvgText } from 'react-native-svg';
 import { type MetronomeTrack } from '../audio/AudioEngine';
 import { useKaraokeSyllable } from '../hooks/useKaraokeSyllable';
@@ -48,20 +48,20 @@ function sectorPath(rInner: number, rOuter: number, startDeg: number, endDeg: nu
 // Color constants
 const COLORS = {
   bgA: '#2a1800',
-  hitA: '#f90',
-  accentA: '#ffb347',
-  tailA: '#f90',
-  headA: '#fff9e0',
-  bgB: '#2a2a00',
-  hitB: '#ff0',
-  accentB: '#ffff80',
-  tailB: '#ff0',
+  hitA: '#ff6b35',
+  accentA: '#e8803a',
+  tailA: '#ff6b35',
+  headA: '#fff0e8',
+  bgB: '#1a1a00',
+  hitB: '#e8aa14',
+  accentB: '#d4a020',
+  tailB: '#e8aa14',
   headB: '#fffff0',
   accentOn: 'rgba(100,200,255,0.85)',
   accentOff: 'rgba(255,255,255,0.06)',
-  centerPivot: '#555',
-  sylA: '#f90',
-  sylB: '#ff0',
+  centerPivot: '#2a2a4a',
+  sylA: '#ff6b35',
+  sylB: '#e8aa14',
   sylAB: '#fff',
 };
 
@@ -149,6 +149,8 @@ export function CircleViz({
   microAccents = [],
   karaokeOn = false, onToggleKaraoke,
 }: CircleVizProps) {
+  const { width, height } = useWindowDimensions();
+  const vizSize = Math.min(width, height * 0.45, 300);
   const [sweepA, setSweepA] = useState(0);
   const [sweepB, setSweepB] = useState(0);
   const lastBeatTimeARef = useRef<number>(0);
@@ -195,7 +197,7 @@ export function CircleViz({
   const sylColor = kar.typeCls === 'a' ? COLORS.sylA : kar.typeCls === 'b' ? COLORS.sylB : COLORS.sylAB;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width: vizSize, height: vizSize }]}>
       <Svg
         viewBox="0 0 300 300"
         width="100%"
@@ -226,20 +228,21 @@ export function CircleViz({
           <Circle cx={CX} cy={CY} r={5} fill={COLORS.centerPivot} />
         )}
         {karaokeOn && (
-          <SvgText
-            key={kar.isActive ? `k-${kar.flashKey}` : 'k'}
-            x={CX}
-            y={CY}
-            textAnchor="middle"
-            alignmentBaseline="central"
-            fill={sylColor}
-            fontSize={kar.isLong ? 28 : 24}
-            fontWeight="bold"
-            opacity={kar.isActive ? 1 : 0.35}
-            onPress={kar.cyclePhrase}
-          >
-            {kar.text}
-          </SvgText>
+          <G onPress={kar.cyclePhrase}>
+            <SvgText
+              key={kar.isActive ? `k-${kar.flashKey}` : 'k'}
+              x={CX}
+              y={CY}
+              textAnchor="middle"
+              alignmentBaseline="central"
+              fill={sylColor}
+              fontSize={kar.isLong ? 28 : 24}
+              fontWeight="bold"
+              opacity={kar.isActive ? 1 : 0.35}
+            >
+              {kar.text}
+            </SvgText>
+          </G>
         )}
       </Svg>
 
@@ -258,8 +261,7 @@ export function CircleViz({
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    aspectRatio: 1,
+    alignSelf: 'center',
     position: 'relative',
     backgroundColor: '#0f0f0f',
   },
@@ -269,7 +271,7 @@ const styles = StyleSheet.create({
     right: 8,
     padding: 8,
     borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,10,20,0.6)',
   },
   karaokeToggleOn: {
     backgroundColor: 'rgba(100,100,100,0.6)',

@@ -14,8 +14,8 @@ interface KaraokeBarProps {
 }
 
 const TYPE_COLORS: Record<'a' | 'b' | 'ab', string> = {
-  a: '#f90',
-  b: '#ff0',
+  a: '#ff6b35',
+  b: '#e8aa14',
   ab: '#ffffff',
 };
 
@@ -78,17 +78,17 @@ export function KaraokeBar({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    minHeight: 44,
+    height: 64,
     backgroundColor: '#0f0f0f',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   toggleBtn: {
+    position: 'absolute',
+    left: 12,
     padding: 6,
     borderRadius: 6,
-    marginRight: 8,
+    zIndex: 1,
   },
   toggleBtnOn: {
     backgroundColor: '#2a2a2a',
@@ -97,17 +97,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   sylRow: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   syllable: {
     fontSize: 28,
     fontWeight: '700',
     letterSpacing: 2,
+    textAlign: 'center',
+    lineHeight: 36,
   },
   syllableLong: {
-    fontSize: 32,
     letterSpacing: 4,
   },
   syllablePreview: {

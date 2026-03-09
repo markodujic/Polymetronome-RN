@@ -22,7 +22,7 @@ export default function App() {
     volumeA, volumeB, volumeMicro, volumePulse,
     microAccents, toggle, applyBpm,
     setBeats, cycleBeatLevel, changeVolume,
-    toggleMicroAccent, setSound, pulseFreq, setPulseFreq,
+    toggleMicroAccent, toggleAccent, setSound, pulseFreq, setPulseFreq,
   } = useMetronome();
 
   const { width, height } = useWindowDimensions();
@@ -59,7 +59,7 @@ export default function App() {
   }, [volumePulse, changeVolume]);
 
   const handleToggle = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch { /* no haptics on this platform */ }
     toggle();
   }, [toggle]);
 
@@ -75,35 +75,40 @@ export default function App() {
 
   const controlsSection = (
     <>
-      {/* BPM Section */}
-      <View style={styles.bpmSection}>
-        <Text style={styles.appTitle}>
-          <Text style={styles.titlePoly}>Poly</Text>
-          <Text style={styles.titleMetro}>metronome</Text>
-        </Text>
+      {/* Header row: i | BPM | Logo */}
+      <View style={styles.headerRow}>
+        <View style={styles.infoBtn}>
+          <Text style={styles.infoBtnTxt}>i</Text>
+        </View>
         <View style={styles.bpmDisplay}>
           <Text style={styles.bpmValue}>{bpm}</Text>
           <Text style={styles.bpmUnit}>BPM</Text>
         </View>
-        <View style={styles.bpmControls}>
-          <TouchableOpacity style={styles.bpmStepBtn} onPress={() => applyBpm(bpm - 1)}>
-            <Text style={styles.stepTxt}>−</Text>
-          </TouchableOpacity>
-          <Slider
-            style={styles.bpmSlider}
-            minimumValue={20}
-            maximumValue={300}
-            value={bpm}
-            step={1}
-            onValueChange={applyBpm}
-            minimumTrackTintColor="#f90"
-            maximumTrackTintColor="#444"
-            thumbTintColor="#f90"
-          />
-          <TouchableOpacity style={styles.bpmStepBtn} onPress={() => applyBpm(bpm + 1)}>
-            <Text style={styles.stepTxt}>+</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.appTitle}>
+          <Text style={styles.titlePoly}>Poly</Text>
+          <Text style={styles.titleMetro}>metronome</Text>
+        </Text>
+      </View>
+
+      {/* BPM Slider row */}
+      <View style={styles.bpmControls}>
+        <TouchableOpacity style={styles.bpmStepBtn} onPress={() => applyBpm(bpm - 1)}>
+          <Text style={styles.stepTxt}>−</Text>
+        </TouchableOpacity>
+        <Slider
+          style={styles.bpmSlider}
+          minimumValue={20}
+          maximumValue={300}
+          value={bpm}
+          step={1}
+          onValueChange={applyBpm}
+          minimumTrackTintColor="#ff6b35"
+          maximumTrackTintColor="#2a3a4a"
+          thumbTintColor="#ff6b35"
+        />
+        <TouchableOpacity style={styles.bpmStepBtn} onPress={() => applyBpm(bpm + 1)}>
+          <Text style={styles.stepTxt}>+</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Tracks */}
@@ -134,36 +139,29 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      {/* Micro / Pulse / Frequency sliders */}
+      {/* Micro / Pulse / Frequency sliders – single horizontal row */}
       <View style={styles.sliderGroup}>
-        <SliderRow
-          label="Micro"
+        <CompactSlider
+          label="MICRO"
           muted={volumeMicro === 0}
           onMute={muteMicro}
           value={volumeMicro}
           onValueChange={(v) => changeVolume('micro', v)}
         />
-        <SliderRow
-          label="Pulse"
+        <CompactSlider
+          label="PULSE"
           muted={volumePulse === 0}
           onMute={mutePulse}
           value={volumePulse}
           onValueChange={(v) => changeVolume('pulse', v)}
         />
-        <View style={styles.sliderRow}>
-          <Text style={styles.sliderLabel}>{pulseFreq} Hz</Text>
-          <Slider
-            style={styles.auxSlider}
-            minimumValue={50}
-            maximumValue={5000}
-            value={pulseFreq}
-            step={10}
-            onValueChange={setPulseFreq}
-            minimumTrackTintColor="#add8e6"
-            maximumTrackTintColor="#444"
-            thumbTintColor="#add8e6"
-          />
-        </View>
+        <CompactSlider
+          label={`${pulseFreq} HZ`}
+          muted={false}
+          onMute={() => {}}
+          value={pulseFreq / 5000}
+          onValueChange={(v) => setPulseFreq(Math.round(v * 5000 / 10) * 10 || 50)}
+        />
       </View>
     </>
   );
@@ -178,6 +176,7 @@ export default function App() {
           microAccents={microAccents}
           onMicroAccentToggle={toggleMicroAccent}
           onBeatBClick={cycleBeatLevel}
+          onBeatAAccentClick={(i) => toggleAccent(1, i)}
           pulseActive={pulseActive}
           beatIntervalSec={beatIntervalSec}
         />
@@ -203,14 +202,16 @@ export default function App() {
   );
 
   const playButton = (
-    <TouchableOpacity
-      style={[styles.playBtn, isPlaying && styles.playBtnActive, isLandscape && styles.playBtnLandscape]}
-      onPress={handleToggle}
-      accessibilityLabel={isPlaying ? 'Stop' : 'Play'}
-      accessibilityRole="button"
-    >
-      <Text style={styles.playBtnIcon}>{isPlaying ? '⏹' : '▶'}</Text>
-    </TouchableOpacity>
+    <View style={styles.playBtnBar}>
+      <TouchableOpacity
+        style={[styles.playBtn, isPlaying && styles.playBtnActive, isLandscape && styles.playBtnLandscape]}
+        onPress={handleToggle}
+        accessibilityLabel={isPlaying ? 'Stop' : 'Play'}
+        accessibilityRole="button"
+      >
+        <Text style={styles.playBtnIcon}>{isPlaying ? '⏹' : '▶'}</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -229,20 +230,24 @@ export default function App() {
           </View>
         </View>
       ) : (
-        // Portrait: single column scroll
-        <ScrollView style={styles.portraitScroll} contentContainerStyle={styles.portraitContent}>
-          {controlsSection}
-          {canvasSection}
+        // Portrait: controls scroll, canvas stretches, play button fixed at bottom
+        <View style={styles.portraitContainer}>
+          <ScrollView style={styles.portraitScroll} contentContainerStyle={styles.portraitContent}>
+            {controlsSection}
+          </ScrollView>
+          <View style={styles.canvasWrapper}>
+            {canvasSection}
+          </View>
           {playButton}
-        </ScrollView>
+        </View>
       )}
     </SafeAreaView>
     </SafeAreaProvider>
   );
 }
 
-// Small reusable slider row component
-function SliderRow({
+// Compact horizontal slider (label on top, slider below)
+function CompactSlider({
   label, muted, onMute, value, onValueChange,
 }: {
   label: string;
@@ -252,37 +257,52 @@ function SliderRow({
   onValueChange: (v: number) => void;
 }) {
   return (
-    <View style={styles.sliderRow}>
-      <TouchableOpacity onPress={onMute} style={styles.sliderLabelBtn}>
-        <Text style={[styles.sliderLabel, muted && styles.sliderLabelMuted]}>
+    <View style={styles.compactSliderCol}>
+      <TouchableOpacity onPress={onMute}>
+        <Text style={[styles.compactSliderLabel, muted && styles.sliderLabelMuted]}>
           {label}
         </Text>
       </TouchableOpacity>
       <Slider
-        style={styles.auxSlider}
+        style={styles.compactSlider}
         minimumValue={0}
         maximumValue={1}
         value={value}
         onValueChange={onValueChange}
-        minimumTrackTintColor={muted ? '#555' : '#add8e6'}
-        maximumTrackTintColor="#444"
-        thumbTintColor={muted ? '#555' : '#add8e6'}
+        minimumTrackTintColor={muted ? '#2a3a4a' : '#ff6b35'}
+        maximumTrackTintColor="#2a3a4a"
+        thumbTintColor={muted ? '#4a5a6a' : '#ff6b35'}
       />
     </View>
   );
 }
 
+const BG = '#0f0f0f';
+const BG2 = '#1a1a2e';
+const BG3 = '#16213e';
+const ACCENT = '#ff6b35';
+const ACCENT_B = '#e8aa14';
+const BORDER = '#2a2a4a';
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: BG,
   },
   // Portrait layout
-  portraitScroll: {
+  portraitContainer: {
     flex: 1,
+    flexDirection: 'column',
+  },
+  portraitScroll: {
+    flexShrink: 1,
+    flexGrow: 0,
   },
   portraitContent: {
-    paddingBottom: 24,
+    paddingBottom: 0,
+  },
+  canvasWrapper: {
+    flex: 1,
   },
   // Landscape layout
   landscapeRow: {
@@ -291,30 +311,44 @@ const styles = StyleSheet.create({
   },
   leftCol: {
     width: '42%',
-    backgroundColor: '#0f0f0f',
+    backgroundColor: BG,
   },
   leftColContent: {
     paddingBottom: 16,
   },
   rightCol: {
     flex: 1,
-    backgroundColor: '#0f0f0f',
+    backgroundColor: BG,
     justifyContent: 'center',
   },
-  // BPM Section
-  bpmSection: {
+  // Header row
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 4,
+  },
+  infoBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: BG3,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoBtnTxt: {
+    color: '#8892b0',
+    fontSize: 14,
+    fontWeight: '600',
   },
   appTitle: {
-    fontSize: 20,
-    letterSpacing: 1,
-    marginBottom: 8,
+    fontSize: 15,
+    letterSpacing: 0.5,
   },
   titlePoly: {
-    color: '#f90',
+    color: ACCENT,
     fontWeight: '700',
   },
   titleMetro: {
@@ -324,31 +358,31 @@ const styles = StyleSheet.create({
   bpmDisplay: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    gap: 6,
+    gap: 4,
   },
   bpmValue: {
-    color: '#e0e0e0',
-    fontSize: 48,
+    color: ACCENT,
+    fontSize: 44,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
   bpmUnit: {
-    color: '#888',
+    color: '#8892b0',
     fontSize: 14,
     fontWeight: '400',
   },
   bpmControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
+    paddingHorizontal: 16,
     gap: 8,
-    marginTop: 4,
+    marginBottom: 4,
   },
   bpmStepBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#2a2a2a',
+    backgroundColor: BG3,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -363,92 +397,100 @@ const styles = StyleSheet.create({
   // View toggle
   viewToggle: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginVertical: 8,
-    gap: 8,
+    marginHorizontal: 0,
+    marginVertical: 0,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: BORDER,
   },
   viewBtn: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#444',
+    paddingVertical: 10,
     alignItems: 'center',
+    backgroundColor: BG2,
   },
   viewBtnActive: {
-    borderColor: '#f90',
-    backgroundColor: 'rgba(255,153,0,0.12)',
+    backgroundColor: BG3,
   },
   viewBtnTxt: {
-    color: '#888',
+    color: '#5a6080',
     fontSize: 13,
     fontWeight: '600',
+    letterSpacing: 0.5,
   },
   viewBtnTxtActive: {
-    color: '#f90',
+    color: ACCENT,
   },
-  // Slider group
+  // Slider group – horizontal row
   sliderGroup: {
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    gap: 4,
-  },
-  sliderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    height: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
   },
-  sliderLabelBtn: {
-    width: 50,
+  compactSliderCol: {
+    flex: 1,
+    alignItems: 'stretch',
   },
-  sliderLabel: {
-    color: '#add8e6',
-    fontSize: 12,
-    fontWeight: '600',
-    width: 50,
+  compactSliderLabel: {
+    color: ACCENT,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  compactSlider: {
+    height: 32,
+    width: '100%',
   },
   sliderLabelMuted: {
-    color: '#555',
+    color: '#5a6080',
     textDecorationLine: 'line-through',
-  },
-  auxSlider: {
-    flex: 1,
-    height: 36,
   },
   // Canvas area
   canvasArea: {
-    marginTop: 8,
+    flex: 1,
     width: '100%',
   },
   canvasAreaLandscape: {
     flex: 1,
   },
+  // Play button bar
+  playBtnBar: {
+    backgroundColor: BG2,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+  },
   // Play button
   playBtn: {
-    alignSelf: 'center',
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#1a1a1a',
-    borderWidth: 2,
-    borderColor: '#f90',
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: ACCENT,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 16,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
   },
   playBtnActive: {
-    backgroundColor: 'rgba(255,153,0,0.15)',
+    backgroundColor: '#4ade80',
+    shadowColor: '#4ade80',
   },
   playBtnLandscape: {
-    width: '90%',
+    width: '80%',
     height: 48,
     borderRadius: 24,
-    marginHorizontal: '5%',
-    alignSelf: 'stretch',
   },
   playBtnIcon: {
-    color: '#f90',
-    fontSize: 22,
+    color: '#fff',
+    fontSize: 26,
   },
-});
+});;

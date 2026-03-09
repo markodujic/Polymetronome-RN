@@ -8,7 +8,16 @@
  * eliminating inter-track drift by construction.
  */
 
-import { AudioContext } from 'react-native-audio-api';
+import { Platform } from 'react-native';
+import { AudioContext as RNAudioContext } from 'react-native-audio-api';
+
+function createAudioContext(): RNAudioContext {
+  if (Platform.OS === 'web') {
+    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    return new Ctx() as unknown as RNAudioContext;
+  }
+  return new RNAudioContext();
+}
 
 const SCHEDULE_AHEAD_TIME = 0.1; // seconds to look ahead
 const SCHEDULER_INTERVAL = 25;   // ms between scheduler calls
@@ -95,7 +104,7 @@ class AudioEngine {
 
   async init(): Promise<void> {
     if (!this.ctx) {
-      this.ctx = new AudioContext();
+      this.ctx = createAudioContext();
       this.masterGain = this.ctx.createGain();
       this.masterGain.gain.value = this._masterVol;
       this.masterGain.connect(this.ctx.destination);

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert } from 'react-native';
 import { audioEngine, type MetronomeTrack, type ClickSound } from '../audio/AudioEngine';
 
 function gcd(a: number, b: number): number { return b === 0 ? a : gcd(b, a % b); }
@@ -146,6 +147,10 @@ export function useMetronome() {
       });
       audioEngine.setMicroAccents(microAccentsRef.current);
       setIsPlaying(true);
+    }).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      Alert.alert('Audio Error', msg);
+      console.error('[AudioEngine] init failed:', err);
     });
   }, []);
 

@@ -35,7 +35,7 @@ export const RhythmTrack = memo(function RhythmTrack({
   onMute,
   onSound,
 }: RhythmTrackProps) {
-  const accentColor = isMaster ? '#f90' : '#ff0';
+  const accentColor = isMaster ? '#ff6b35' : '#e8aa14';
 
   return (
     <View style={[styles.container, isSelected && styles.selected]}>
@@ -44,14 +44,13 @@ export const RhythmTrack = memo(function RhythmTrack({
         <TouchableOpacity
           style={[
             styles.labelBtn,
-            { borderColor: accentColor },
-            isSelected && { backgroundColor: accentColor },
+            { backgroundColor: accentColor },
           ]}
           onPress={onSelect}
           accessibilityRole="button"
           accessibilityState={{ selected: isSelected }}
         >
-          <Text style={[styles.labelText, isSelected && styles.labelTextSelected]}>
+          <Text style={[styles.labelText, { color: isSelected ? '#fff' : 'rgba(0,0,0,0.75)' }]}>
             {label}
           </Text>
         </TouchableOpacity>
@@ -122,16 +121,21 @@ export const RhythmTrack = memo(function RhythmTrack({
   );
 });
 
+const BG = '#0f0f0f';
+const BG2 = '#1a1a2e';
+const BG3 = '#16213e';
+const BORDER = '#2a2a4a';
+
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginVertical: 4,
-    borderRadius: 8,
-    backgroundColor: '#1a1a1a',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: BG,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
   },
   selected: {
-    backgroundColor: '#222',
+    backgroundColor: BG2,
   },
   header: {
     flexDirection: 'row',
@@ -140,43 +144,44 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   labelBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 6,
-    borderWidth: 1.5,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   labelText: {
-    color: '#e0e0e0',
-    fontSize: 15,
-    fontWeight: '600',
-    letterSpacing: 1,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   labelTextSelected: {
-    color: '#000',
+    color: '#fff',
   },
   beatsControl: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   stepBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#2a2a2a',
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: BG3,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepBtnText: {
-    color: '#e0e0e0',
-    fontSize: 18,
-    lineHeight: 20,
+    color: '#8892b0',
+    fontSize: 20,
+    lineHeight: 22,
   },
   beatsValue: {
     color: '#e0e0e0',
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '700',
-    minWidth: 32,
+    minWidth: 36,
     textAlign: 'center',
   },
   volumeRow: {
@@ -195,13 +200,13 @@ const styles = StyleSheet.create({
     height: 36,
   },
   pickerWrap: {
-    width: 90,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 6,
+    width: 95,
+    backgroundColor: BG3,
+    borderRadius: 8,
     overflow: 'hidden',
   },
   picker: {
-    color: '#e0e0e0',
+    color: '#8892b0',
     height: 36,
   },
 });
