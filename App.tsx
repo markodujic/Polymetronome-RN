@@ -8,6 +8,7 @@ import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Haptics from 'expo-haptics';
 import Slider from '@react-native-community/slider';
+import { GlowSlider } from './src/components/GlowSlider';
 import { useMetronome } from './src/hooks/useMetronome';
 import { RhythmTrack } from './src/components/RhythmTrack';
 import { PolyCanvas } from './src/components/PolyCanvas';
@@ -75,11 +76,8 @@ export default function App() {
 
   const controlsSection = (
     <>
-      {/* Header row: i | BPM | Logo */}
+      {/* Header row: BPM | Logo */}
       <View style={styles.headerRow}>
-        <View style={styles.infoBtn}>
-          <Text style={styles.infoBtnTxt}>i</Text>
-        </View>
         <View style={styles.bpmDisplay}>
           <Text style={styles.bpmValue}>{bpm}</Text>
           <Text style={styles.bpmUnit}>BPM</Text>
@@ -95,8 +93,9 @@ export default function App() {
         <TouchableOpacity style={styles.bpmStepBtn} onPress={() => applyBpm(bpm - 1)}>
           <Text style={styles.stepTxt}>−</Text>
         </TouchableOpacity>
-        <Slider
-          style={styles.bpmSlider}
+        <GlowSlider
+          wrapperStyle={styles.bpmSlider}
+          sliderHeight={40}
           minimumValue={20}
           maximumValue={300}
           value={bpm}
@@ -104,11 +103,25 @@ export default function App() {
           onValueChange={applyBpm}
           minimumTrackTintColor="#ff6b35"
           maximumTrackTintColor="#2a3a4a"
-          thumbTintColor="#ff6b35"
         />
         <TouchableOpacity style={styles.bpmStepBtn} onPress={() => applyBpm(bpm + 1)}>
           <Text style={styles.stepTxt}>+</Text>
         </TouchableOpacity>
+      </View>
+
+      {/* Preset canvas */}
+      <View style={styles.presetCanvas}>
+        {PRESETS.map((p) => (
+          <TouchableOpacity
+            key={p.label}
+            style={styles.presetBtn}
+            onPress={() => { applyBpm(p.bpm); setBeatsA(p.beatsA); setBeatsB(p.beatsB); }}
+            accessibilityLabel={p.label}
+          >
+            <Text style={styles.presetLabel}>{p.label}</Text>
+            <Text style={styles.presetSub}>{p.beatsA}:{p.beatsB}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Tracks */}
@@ -187,7 +200,6 @@ export default function App() {
           isPlaying={isPlaying} beatIntervalSec={beatIntervalSec}
           microAccents={microAccents}
           karaokeOn={karaokeOn}
-          onToggleKaraoke={() => setKaraokeOn(v => !v)}
         />
       )}
       {viewMode === 'raster' && (
@@ -195,7 +207,6 @@ export default function App() {
           trackA={trackA} trackB={trackB}
           activeBeatA={activeBeatA} activeBeatB={activeBeatB}
           isPlaying={isPlaying} karaokeOn={karaokeOn}
-          onToggleKaraoke={() => setKaraokeOn(v => !v)}
         />
       )}
     </View>
@@ -204,12 +215,25 @@ export default function App() {
   const playButton = (
     <View style={styles.playBtnBar}>
       <TouchableOpacity
+        style={styles.karaokeToggleBtn}
+        onPress={() => setKaraokeOn(v => !v)}
+        accessibilityLabel={karaokeOn ? 'Karaoke ausblenden' : 'Karaoke einblenden'}
+      >
+        <Text style={[styles.karaokeToggleIcon, karaokeOn && styles.karaokeToggleIconOn]}>💬</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
         style={[styles.playBtn, isPlaying && styles.playBtnActive, isLandscape && styles.playBtnLandscape]}
         onPress={handleToggle}
         accessibilityLabel={isPlaying ? 'Stop' : 'Play'}
         accessibilityRole="button"
       >
         <Text style={styles.playBtnIcon}>{isPlaying ? '⏹' : '▶'}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.settingsBtn}
+        accessibilityLabel="Einstellungen"
+      >
+        <Text style={styles.settingsBtnIcon}>⚙️</Text>
       </TouchableOpacity>
     </View>
   );
@@ -263,19 +287,28 @@ function CompactSlider({
           {label}
         </Text>
       </TouchableOpacity>
-      <Slider
-        style={styles.compactSlider}
-        minimumValue={0}
-        maximumValue={1}
+      <GlowSlider
+        sliderHeight={32}
+        muted={muted}
         value={value}
         onValueChange={onValueChange}
         minimumTrackTintColor={muted ? '#2a3a4a' : '#ff6b35'}
         maximumTrackTintColor="#2a3a4a"
-        thumbTintColor={muted ? '#4a5a6a' : '#ff6b35'}
       />
     </View>
   );
 }
+
+const PRESETS = [
+  { label: '4/4',  bpm: 120, beatsA: 4, beatsB: 4 },
+  { label: '3/4',  bpm: 120, beatsA: 3, beatsB: 3 },
+  { label: '6/8',  bpm: 120, beatsA: 6, beatsB: 3 },
+  { label: '5/4',  bpm: 100, beatsA: 5, beatsB: 4 },
+  { label: '3:2',  bpm: 120, beatsA: 3, beatsB: 2 },
+  { label: '4:3',  bpm: 120, beatsA: 4, beatsB: 3 },
+  { label: '5:3',  bpm: 100, beatsA: 5, beatsB: 3 },
+  { label: '7:4',  bpm: 100, beatsA: 7, beatsB: 4 },
+];
 
 const BG = '#0f0f0f';
 const BG2 = '#1a1a2e';
@@ -343,6 +376,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  settingsBtn: {
+    position: 'absolute',
+    right: 16,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: BG3,
+  },
+  settingsBtnIcon: {
+    fontSize: 18,
+  },
   appTitle: {
     fontSize: 15,
     letterSpacing: 0.5,
@@ -393,6 +436,39 @@ const styles = StyleSheet.create({
   stepTxt: {
     color: '#e0e0e0',
     fontSize: 20,
+  },
+  // Preset canvas
+  presetCanvas: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    backgroundColor: BG2,
+  },
+  presetBtn: {
+    flex: 1,
+    minWidth: '22%',
+    paddingVertical: 7,
+    borderRadius: 8,
+    backgroundColor: BG3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  presetLabel: {
+    color: '#e0e0e0',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  presetSub: {
+    color: '#5a6080',
+    fontSize: 10,
+    marginTop: 1,
   },
   // View toggle
   viewToggle: {
@@ -462,9 +538,24 @@ const styles = StyleSheet.create({
   playBtnBar: {
     backgroundColor: BG2,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: BORDER,
+  },
+  karaokeToggleBtn: {
+    position: 'absolute',
+    left: 16,
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: BG3,
+  },
+  karaokeToggleIcon: {
+    fontSize: 18,
+    opacity: 0.4,
+  },
+  karaokeToggleIconOn: {
+    opacity: 1,
   },
   // Play button
   playBtn: {
@@ -481,8 +572,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   playBtnActive: {
-    backgroundColor: '#4ade80',
-    shadowColor: '#4ade80',
+    backgroundColor: '#7dd3fc',
+    shadowColor: '#7dd3fc',
   },
   playBtnLandscape: {
     width: '80%',

@@ -13,7 +13,6 @@ interface CircleVizProps {
   beatIntervalSec: number;
   microAccents?: boolean[];
   karaokeOn?: boolean;
-  onToggleKaraoke?: () => void;
 }
 
 const CX = 150;
@@ -47,16 +46,16 @@ function sectorPath(rInner: number, rOuter: number, startDeg: number, endDeg: nu
 
 // Color constants
 const COLORS = {
-  bgA: '#2a1800',
+  bgA: 'rgba(255,107,53,0.08)',
   hitA: '#ff6b35',
-  accentA: '#e8803a',
-  tailA: '#ff6b35',
-  headA: '#fff0e8',
-  bgB: '#1a1a00',
+  accentA: 'rgba(255,107,53,0.08)',
+  tailA: '#7dd3fc',
+  headA: '#7dd3fc',
+  bgB: 'rgba(232,170,20,0.08)',
   hitB: '#e8aa14',
-  accentB: '#d4a020',
-  tailB: '#e8aa14',
-  headB: '#fffff0',
+  accentB: 'rgba(232,170,20,0.08)',
+  tailB: '#7dd3fc',
+  headB: '#7dd3fc',
   accentOn: 'rgba(100,200,255,0.85)',
   accentOff: 'rgba(255,255,255,0.06)',
   centerPivot: '#2a2a4a',
@@ -147,7 +146,7 @@ export function CircleViz({
   activeBeatA, activeBeatB,
   isPlaying, beatIntervalSec,
   microAccents = [],
-  karaokeOn = false, onToggleKaraoke,
+  karaokeOn = false,
 }: CircleVizProps) {
   const { width, height } = useWindowDimensions();
   const vizSize = Math.min(width, height * 0.45, 300);
@@ -197,6 +196,7 @@ export function CircleViz({
   const sylColor = kar.typeCls === 'a' ? COLORS.sylA : kar.typeCls === 'b' ? COLORS.sylB : COLORS.sylAB;
 
   return (
+    <View style={styles.outerWrapper}>
     <View style={[styles.container, { width: vizSize, height: vizSize }]}>
       <Svg
         viewBox="0 0 300 300"
@@ -246,15 +246,7 @@ export function CircleViz({
         )}
       </Svg>
 
-      {onToggleKaraoke && (
-        <TouchableOpacity
-          style={[styles.karaokeToggle, karaokeOn && styles.karaokeToggleOn]}
-          onPress={onToggleKaraoke}
-          accessibilityLabel={karaokeOn ? 'Hide phrases' : 'Show phrases'}
-        >
-          <Text style={styles.karaokeToggleIcon}>💬</Text>
-        </TouchableOpacity>
-      )}
+    </View>
     </View>
   );
 }
@@ -263,6 +255,12 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     position: 'relative',
+    backgroundColor: '#0f0f0f',
+  },
+  outerWrapper: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#0f0f0f',
   },
   karaokeToggle: {

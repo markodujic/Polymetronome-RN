@@ -10,7 +10,6 @@ interface KaraokeBarProps {
   activeBeatB: number | null;
   isPlaying: boolean;
   karaokeOn: boolean;
-  onToggleKaraoke: () => void;
 }
 
 const TYPE_COLORS: Record<'a' | 'b' | 'ab', string> = {
@@ -22,54 +21,56 @@ const TYPE_COLORS: Record<'a' | 'b' | 'ab', string> = {
 export function KaraokeBar({
   trackA, trackB,
   activeBeatA, activeBeatB,
-  isPlaying, karaokeOn, onToggleKaraoke,
+  isPlaying, karaokeOn,
 }: KaraokeBarProps) {
   const { text, typeCls, isLong, isActive, flashKey, cyclePhrase } =
     useKaraokeSyllable(trackA, trackB, activeBeatA, activeBeatB, isPlaying);
 
-  // Flash animation: quickly pulse opacity on each beat
-  const flashAnim = useRef(new Animated.Value(1)).current;
+  // Impulse effect: scale 1.25→1 + #7dd3fc glow → textcolor, like web-app karaoke-pulse
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current; // 1=glow, 0=no glow
   const prevFlashKey = useRef(flashKey);
 
   useEffect(() => {
     if (flashKey !== prevFlashKey.current && isActive) {
       prevFlashKey.current = flashKey;
-      Animated.sequence([
-        Animated.timing(flashAnim, { toValue: 1.6, duration: 60, useNativeDriver: true }),
-        Animated.timing(flashAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      scaleAnim.setValue(1.25);
+      glowAnim.setValue(1);
+      Animated.parallel([
+        Animated.timing(scaleAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 300, useNativeDriver: false }),
       ]).start();
     }
-  }, [flashKey, isActive, flashAnim]);
+  }, [flashKey, isActive, scaleAnim, glowAnim]);
 
   const textColor = TYPE_COLORS[typeCls];
+  const shadowRadius = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 10] });
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={[styles.toggleBtn, karaokeOn && styles.toggleBtnOn]}
-        onPress={onToggleKaraoke}
-        accessibilityLabel={karaokeOn ? 'Hide phrases' : 'Show phrases'}
-      >
-        <Text style={styles.toggleIcon}>💬</Text>
-      </TouchableOpacity>
-
       {karaokeOn && (
         <TouchableOpacity
           style={styles.sylRow}
           onPress={cyclePhrase}
           accessibilityLabel="Next phrase"
         >
-          <Animated.Text
-            style={[
-              styles.syllable,
-              { color: textColor },
-              isLong && styles.syllableLong,
-              !isPlaying && styles.syllablePreview,
-              { opacity: flashAnim },
-            ]}
-          >
-            {text}
-          </Animated.Text>
+          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+            <Animated.Text
+              style={[
+                styles.syllable,
+                { color: textColor },
+                isLong && styles.syllableLong,
+                !isPlaying && styles.syllablePreview,
+                {
+                  textShadowColor: 'rgba(125, 211, 252, 0.9)',
+                  textShadowOffset: { width: 0, height: 0 },
+                  textShadowRadius: shadowRadius,
+                },
+              ]}
+            >
+              {text}
+            </Animated.Text>
+          </Animated.View>
         </TouchableOpacity>
       )}
     </View>
@@ -82,24 +83,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f0f0f',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  toggleBtn: {
-    position: 'absolute',
-    left: 12,
-    padding: 6,
-    borderRadius: 6,
-    zIndex: 1,
-  },
-  toggleBtnOn: {
-    backgroundColor: '#2a2a2a',
-  },
-  toggleIcon: {
-    fontSize: 18,
+    overflow: 'visible',
   },
   sylRow: {
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    overflow: 'visible',
   },
   syllable: {
     fontSize: 28,

@@ -5,6 +5,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.6.0] – 2026-03-09
+
+### Added
+- **Preset Canvas** – 8 one-tap preset buttons (4/4, 3/4, 6/8, 5/4, 3:2, 4:3, 5:3, 7:4) between the BPM slider and the track rows; each preset sets BPM, Beats A, and Beats B simultaneously.
+- **Settings button (⚙️)** – gear icon button on the right side of the Play Bar (symmetric to the 💬 karaoke toggle on the left); placeholder for future settings panel.
+- **`GlowSlider` component** – new reusable `src/components/GlowSlider.tsx`; renders a semi-transparent halo circle behind the thumb that scales in opacity with the slider value (0.15–0.50). Used by BPM slider, CompactSlider (Micro/Pulse/Hz), and both RhythmTrack volume sliders.
+
+### Changed
+- **RhythmTrack compact layout** – all controls (label, beat stepper, mute, slider, picker) collapsed into a single horizontal row (~44 px); saves ~130 px of vertical space.
+- **Play button active color** – changed from `#4ade80` (green) to `#7dd3fc` (light blue) to match the app's accent system.
+- **Beat 1 colors** – cells where Track A and Track B coincide now show Track A color (orange `#ff6b35`) in row A and Track B color (gold `#e8aa14`) in row B instead of white `#ffffff`.
+- **KaraokeBar impulse effect** – replaced opacity pulse with scale 1.25→1 + `#7dd3fc` text-shadow glow (300 ms ease-out), matching the web-app `karaoke-pulse` CSS animation exactly.
+- **KaraokeBar overflow** – set `overflow: 'visible'` on container and `sylRow` so the 1.25× scaled text is never clipped.
+- **KaraokeBar toggle removed from bar** – the 💬 toggle button was moved from inside `KaraokeBar` to the `playBtnBar` (App.tsx); `KaraokeBar` no longer accepts `onToggleKaraoke`.
+- **Info button removed** – the `i` button in the header was removed; its space is freed for the BPM display.
+
+---
+
+## [1.5.0] – 2026-03-08
+
+### Added
+- **Web Audio support** – `createAudioContext()` factory: uses native browser `AudioContext` / `webkitAudioContext` on web, `RNAudioContext` from `react-native-audio-api` on native.
+- **Haptics guard** – `Haptics.impactAsync` wrapped in `try/catch` to prevent crash on web platform.
+- **`play().catch()` error handling** – `Alert.alert` shown on audio initialization failure.
+
+### Changed
+- **Portrait layout rebuilt** – `ScrollView` (controls) + `flex:1` canvas wrapper + fixed play bar at bottom; canvas fills all available space between controls and play bar.
+- **PolyCanvas dynamic height** – container height measured via `onLayout`; `cellHeight = Math.max(80, containerHeight)`.
+- **PulseGlow animation** – replaced RAF loop with `Animated.timing` + `delay = pos * beatIntervalSec`, `intensity = Math.pow(pos, 1.5) * 0.65`; remounted via `key={beatKey}` on each beat — identical to web-app pulse sweep.
+- **CircleViz centered** – `outerWrapper` with `flex:1` + `alignItems/justifyContent: center`.
+- **CircleViz inactive segments** – `bgA/bgB/accentA/accentB` all `rgba(..., 0.08)` — uniformly dark; hit colors full orange/gold; tail/head `#7dd3fc`.
+- **Speech bubble position** – moved from CircleViz corner to `playBtnBar` left side (`position: absolute, left: 16`).
+- **KaraokeBar fixed height** – `height: 64`, `syllableLong` only changes `letterSpacing` (no font-size jump).
+
+---
+
 ## [1.4.0] – 2026-03-07
 
 ### Added

@@ -9,13 +9,18 @@ useMetronome (hook)
   ├── AudioEngine (singleton)   ← schedules audio ahead of time
   └── React state               ← drives UI re-renders
         └── App
-              ├── RhythmTrack (A – master)
-              ├── RhythmTrack (B – derived)
+              ├── PresetCanvas (8 one-tap polyrhythm presets)
+              ├── RhythmTrack (A – master, compact single row)
+              ├── RhythmTrack (B – derived, compact single row)
               ├── PolyCanvas (Mikroraster)
-              ├── CircleViz (Circle Visualizer + karaoke center text)
+              ├── CircleViz (Circle Visualizer)
               │     └── useKaraokeSyllable (shared hook)
-              └── KaraokeBar (Raster view karaoke bar)
-                    └── useKaraokeSyllable (shared hook)
+              ├── KaraokeBar (Raster view karaoke bar)
+              │     └── useKaraokeSyllable (shared hook)
+              └── PlayBtnBar
+                    ├── 💬 KaraokeToggle (absolute left)
+                    ├── PlayButton (center)
+                    └── ⚙️ SettingsButton (absolute right)
 ```
 
 ---
@@ -23,7 +28,7 @@ useMetronome (hook)
 ## Component Tree
 
 ### `App`
-Root component. Holds `focusedTrack: 'A' | 'B'` state (which track is visually enlarged).
+Root component. Holds `focusedTrack: 'A' | 'B'`, `viewMode`, `karaokeOn` state.
 
 **State from `useMetronome`:**
 
@@ -62,14 +67,23 @@ Root component. Holds `focusedTrack: 'A' | 'B'` state (which track is visually e
 ---
 
 ### `RhythmTrack`
-Control row for one track:
-- Label button (A / B) – pressing it switches `focusedTrack` in `App`
+Compact single-row control for one track:
+- Label button (A / B, colored circle) – pressing it switches `focusedTrack` in `App`
 - Beat stepper (− / count / +)
-- BPM display + “Tempo” or “abgeleitet” badge
-- Volume slider (0–100%) with dark-navy track and light-blue glow (intensity proportional to value)
+- Mute icon (🔊/🔇)
+- `GlowSlider` volume slider – halo scales with volume value
 - Sound selector dropdown (3 sine sounds: Low / Mid / High)
 
-Props: `label`, `track`, `isMaster`, `isSelected`, `volume`, `displayBpm`, `onSelect`, `onBeats`, `onVolume`, `onMute`, `onSound`
+Props: `label`, `track`, `isMaster`, `isSelected`, `volume`, `onSelect`, `onBeats`, `onVolume`, `onMute`, `onSound`
+
+---
+
+### `GlowSlider`
+Reusable slider wrapper (`src/components/GlowSlider.tsx`):
+- Renders a semi-transparent halo circle behind the native `Slider` thumb
+- Circle opacity: `0.15 + fraction × 0.35` (min at left, max at right)
+- `muted=true` → halo hidden, thumb gray
+- Uses `flex: 1` on wrapper so it participates correctly in flex rows
 
 ---
 
@@ -99,10 +113,11 @@ Grid size = LCM(beatsA, beatsB). Each column represents one unit in the LCM grid
 **Cell colours:**
 | State | Colour |
 |---|---|
-| Track A schlägt hier | `--accent` (orange) |
-| Track B schlägt hier | `--accent-secondary` (yellow) |
-| Beide gleichzeitig | weiß |
-| Kein Schlag | `--bg-secondary` (dunkel) |
+| Track A schlägt hier | `#ff6b35` (orange) |
+| Track B schlägt hier | `#e8aa14` (gold) |
+| Beide gleichzeitig, Zeile A | `#ff6b35` (orange) |
+| Beide gleichzeitig, Zeile B | `#e8aa14` (gold) |
+| Kein Schlag | `#16213e` (dunkel) |
 | Aktiv (gerade gespielt) | leuchtet auf |
 
 Receives `focusedTrack: 'A' | 'B'` and sets `--flex-a` / `--flex-b` CSS variables accordingly. Transition is animated (0.2 s ease).

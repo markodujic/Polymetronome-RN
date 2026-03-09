@@ -10,6 +10,7 @@
 - [x] **3-state beat levels** – per-beat volume toggle (100%/50%/0%) for Track B
 - [x] **Responsive no-scroll layout** – fits 100dvh, safe-area support
 - [ ] **Preset system** – save and load named polyrhythm configurations to `localStorage`
+- [x] **Preset canvas** – 8 one-tap hardcoded presets (4/4, 3/4, 6/8, 5/4, 3:2, 4:3, 5:3, 7:4) set BPM + both beat counts
 
 ### Medium Priority
 - [ ] **Metronome swing** – swing/shuffle percentage slider for Track A
@@ -78,6 +79,14 @@
 - [x] Label-Farbe – Micro/Pulse/Hz Labels in `var(--accent)` statt `var(--text-dim)`
 - [x] Pulse Default 1600 Hz (Oktave unter sine-high 3200 Hz)
 - [x] Hz-Slider bis 5000 Hz, Clamp auf 5000
+- [x] RhythmTrack kompakt – alle Controls in einer Zeile (~44 px)
+- [x] GlowSlider – Halo-Kreis hinter Thumb, Opacity skaliert mit Sliderwert
+- [x] Preset Canvas – 8 Voreinstellungs-Buttons (4/4, 3/4, 6/8, 5/4, 3:2, 4:3, 5:3, 7:4)
+- [x] Play-Button bei aktiv in Hellblau (#7dd3fc) statt Grün
+- [x] Beat-1-Farben: kein Weiß mehr, A-Zeile orange / B-Zeile gold
+- [x] KaraokeBar Impuls-Effekt: Scale 1.25→1 + #7dd3fc Glow (300 ms)
+- [x] Einstellungszahnrad (⚙️) rechts in der Play-Bar
+- [x] Web Audio Support (createAudioContext Factory)
 - [x] TAP-Button entfernt – BPM-Slider zwischen − und + Buttons
 - [x] BPM +/− Buttons rund (`border-radius: 50%`)
 - [x] Schwarzen Spalt unter BPM-Section entfernt (`margin: 0`)

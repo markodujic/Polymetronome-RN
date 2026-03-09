@@ -30,7 +30,6 @@ interface PolyCanvasProps {
 // Colors matching web app's CSS custom properties
 const COLOR_A_HIT = '#ff6b35';
 const COLOR_B_HIT = '#e8aa14';
-const COLOR_BOTH = '#ffffff';
 const COLOR_EMPTY = '#16213e';
 const COLOR_ACTIVE_A = '#ffb347';
 const COLOR_ACTIVE_B = '#ffff80';
@@ -162,16 +161,13 @@ export const PolyCanvas = memo(function PolyCanvas({
 
           // Row A color
           let rowAColor = COLOR_EMPTY;
-          if (isA && isActiveA) rowAColor = isB ? COLOR_BOTH : COLOR_ACTIVE_A;
-          else if (isA) rowAColor = isB ? COLOR_BOTH : COLOR_A_HIT;
+          if (isA && isActiveA) rowAColor = COLOR_ACTIVE_A;
+          else if (isA) rowAColor = COLOR_A_HIT;
 
           // Row B color, adjusted for beat level
           let rowBColor = COLOR_EMPTY;
           if (isB) {
-            const base = isA ? COLOR_BOTH : COLOR_B_HIT;
-            rowBColor = isActiveB
-              ? (isA ? '#fff' : COLOR_ACTIVE_B)
-              : base;
+            rowBColor = isActiveB ? COLOR_ACTIVE_B : COLOR_B_HIT;
           }
           // Dim for reduced beat level
           const rowBOpacity = isB ? (level >= 1 ? 1 : level >= 0.5 ? 0.55 : 0.15) : 1;

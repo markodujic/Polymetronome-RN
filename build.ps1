@@ -1,0 +1,5 @@
+﻿$env:JAVA_HOME = 'C:\Program Files\Android\Android Studio\jbr'
+$env:ANDROID_HOME = 'C:\Users\dujic\AppData\Local\Android\Sdk'
+$env:PATH = '$env:JAVA_HOME\bin;C:\Program Files\Git\usr\bin;C:\Program Files\nodejs;$env:PATH'
+Set-Location 'C:\rn'
+& 'C:\Program Files\nodejs\npx.cmd' expo run:android 2>&1 | Tee-Object 'C:\rn\build-log.txt'

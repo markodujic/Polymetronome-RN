@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Slider from '@react-native-community/slider';
+import { GlowSlider } from './GlowSlider';
 import { Picker } from '@react-native-picker/picker';
 import type { MetronomeTrack, ClickSound } from '../audio/AudioEngine';
 
@@ -39,13 +39,10 @@ export const RhythmTrack = memo(function RhythmTrack({
 
   return (
     <View style={[styles.container, isSelected && styles.selected]}>
-      {/* Header: label button + beats control */}
-      <View style={styles.header}>
+      {/* Single compact row: label | − beats + | mute | slider | picker */}
+      <View style={styles.row}>
         <TouchableOpacity
-          style={[
-            styles.labelBtn,
-            { backgroundColor: accentColor },
-          ]}
+          style={[styles.labelBtn, { backgroundColor: accentColor }]}
           onPress={onSelect}
           accessibilityRole="button"
           accessibilityState={{ selected: isSelected }}
@@ -55,44 +52,26 @@ export const RhythmTrack = memo(function RhythmTrack({
           </Text>
         </TouchableOpacity>
 
-        <View style={styles.beatsControl}>
-          <TouchableOpacity
-            style={styles.stepBtn}
-            onPress={() => onBeats(track.beats - 1)}
-            accessibilityLabel="Decrease beats"
-          >
-            <Text style={styles.stepBtnText}>−</Text>
-          </TouchableOpacity>
-          <Text style={styles.beatsValue}>{track.beats}</Text>
-          <TouchableOpacity
-            style={styles.stepBtn}
-            onPress={() => onBeats(track.beats + 1)}
-            accessibilityLabel="Increase beats"
-          >
-            <Text style={styles.stepBtnText}>+</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        <TouchableOpacity style={styles.stepBtn} onPress={() => onBeats(track.beats - 1)}>
+          <Text style={styles.stepBtnText}>−</Text>
+        </TouchableOpacity>
+        <Text style={styles.beatsValue}>{track.beats}</Text>
+        <TouchableOpacity style={styles.stepBtn} onPress={() => onBeats(track.beats + 1)}>
+          <Text style={styles.stepBtnText}>+</Text>
+        </TouchableOpacity>
 
-      {/* Volume row: mute icon + slider + sound picker */}
-      <View style={styles.volumeRow}>
-        <TouchableOpacity
-          onPress={onMute}
-          accessibilityLabel={volume > 0 ? 'Mute track' : 'Unmute track'}
-          style={styles.muteBtn}
-        >
+        <TouchableOpacity onPress={onMute} style={styles.muteBtn}>
           <Text style={styles.muteIcon}>{volume > 0 ? '🔊' : '🔇'}</Text>
         </TouchableOpacity>
 
-        <Slider
-          style={styles.slider}
-          minimumValue={0}
-          maximumValue={1}
+        <GlowSlider
+          sliderHeight={28}
+          glowColor={accentColor}
+          muted={volume === 0}
           value={volume}
           onValueChange={onVolume}
-          minimumTrackTintColor={accentColor}
+          minimumTrackTintColor={volume === 0 ? '#444' : accentColor}
           maximumTrackTintColor="#444"
-          thumbTintColor={accentColor}
         />
 
         {onSound && (
@@ -128,8 +107,8 @@ const BORDER = '#2a2a4a';
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     backgroundColor: BG,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
@@ -137,76 +116,56 @@ const styles = StyleSheet.create({
   selected: {
     backgroundColor: BG2,
   },
-  header: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
+    gap: 6,
   },
   labelBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   labelText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  labelTextSelected: {
-    color: '#fff',
-  },
-  beatsControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
   },
   stepBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     backgroundColor: BG3,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepBtnText: {
     color: '#8892b0',
-    fontSize: 20,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 18,
   },
   beatsValue: {
     color: '#e0e0e0',
-    fontSize: 26,
+    fontSize: 18,
     fontWeight: '700',
-    minWidth: 36,
+    minWidth: 24,
     textAlign: 'center',
   },
-  volumeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
   muteBtn: {
-    padding: 4,
+    padding: 2,
   },
   muteIcon: {
-    fontSize: 18,
-  },
-  slider: {
-    flex: 1,
-    height: 36,
+    fontSize: 15,
   },
   pickerWrap: {
-    width: 95,
+    width: 82,
     backgroundColor: BG3,
     borderRadius: 8,
     overflow: 'hidden',
   },
   picker: {
     color: '#8892b0',
-    height: 36,
+    height: 32,
   },
 });
