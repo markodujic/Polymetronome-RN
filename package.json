@@ -11,6 +11,7 @@
   "dependencies": {
     "@react-native-community/slider": "^5.1.2",
     "@react-native-picker/picker": "^2.11.4",
+    "babel-preset-expo": "^55.0.10",
     "expo": "~55.0.5",
     "expo-haptics": "^55.0.8",
     "expo-status-bar": "~55.0.4",
