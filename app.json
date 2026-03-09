@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Polymetronome",
+    "slug": "polymetronome-rn",
+    "version": "1.4.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0f0f0f",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f0f0f"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.polymetronome",
+      "infoPlist": {
+        "UIBackgroundModes": ["audio"]
+      }
+    },
+    "android": {
+      "package": "com.example.polymetronome",
+      "adaptiveIcon": {
+        "backgroundColor": "#0f0f0f",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "react-native-audio-api",
+        {
+          "ios": {
+            "audioSession": {
+              "category": "Playback",
+              "categoryOptions": ["MixWithOthers"],
+              "mode": "Default"
+            }
+          }
+        }
+      ]
+    ]
+  }
+}
