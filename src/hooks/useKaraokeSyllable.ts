@@ -84,6 +84,7 @@ export function useKaraokeSyllable(
   activeBeatA: number | null,
   activeBeatB: number | null,
   isPlaying: boolean,
+  customPhrases?: Record<number, string>,
 ): KaraokeSyllable {
   const { unionPos, aToSyl, bToSyl, sylType, sylCount } = useMemo(() => {
     const l = _lcm(trackA.beats, trackB.beats);
@@ -114,7 +115,15 @@ export function useKaraokeSyllable(
     return set;
   }, [unionPos, sylCount, trackA.beats, trackB.beats]);
 
-  const phrases = useMemo(() => getPhrasesForCount(sylCount), [sylCount]);
+  const phrases = useMemo(() => {
+    const custom = customPhrases?.[sylCount];
+    if (custom && custom.trim().length > 0) {
+      const words = custom.trim().split(/\s+/);
+      const fitted = Array.from({ length: sylCount }, (_, i) => words[i] ?? '·');
+      return [fitted];
+    }
+    return getPhrasesForCount(sylCount);
+  }, [sylCount, customPhrases]);
   const [phraseIdx, setPhraseIdx] = useState(0);
   const [activeSylIdx, setActiveSylIdx] = useState<number | null>(null);
   const [flashKey, setFlashKey] = useState(0);

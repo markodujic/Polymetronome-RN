@@ -1,5 +1,8 @@
 # Setup & Build-Anleitung (Windows)
 
+> Zuletzt aktualisiert: März 2026  
+> Expo SDK 55 · React Native 0.83 · react-native-audio-api ^0.11 · AsyncStorage installiert
+
 ## Voraussetzungen
 
 - [Node.js](https://nodejs.org/) (empfohlen: LTS, **nicht** v25+)

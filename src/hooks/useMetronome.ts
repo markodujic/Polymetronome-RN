@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { audioEngine, type MetronomeTrack, type ClickSound } from '../audio/AudioEngine';
+import type { Preset } from '../types/preset';
 
 function gcd(a: number, b: number): number { return b === 0 ? a : gcd(b, a % b); }
 function lcm(a: number, b: number): number { return (a * b) / gcd(a, b); }
@@ -208,6 +209,48 @@ export function useMetronome() {
     audioEngine.setPulseFreq(hz);
   }, []);
 
+  const loadPreset = useCallback((preset: Omit<Preset, 'label'>) => {
+    const clampedBpm = Math.max(20, Math.min(300, preset.bpm));
+    const clampedBeatsA = Math.max(1, Math.min(16, preset.beatsA));
+    const clampedBeatsB = Math.max(1, Math.min(16, preset.beatsB));
+
+    const newA: MetronomeTrack = {
+      ...trackARef.current,
+      beats: clampedBeatsA,
+      accents: Array.from({ length: clampedBeatsA }, (_, i) => preset.accentsA[i] ?? (i === 0)),
+      sound: preset.soundA,
+      volume: preset.volumeA,
+      bpm: clampedBpm,
+    };
+    const newB: MetronomeTrack = {
+      ...trackBRef.current,
+      beats: clampedBeatsB,
+      beatLevels: Array.from({ length: clampedBeatsB }, (_, i) => preset.beatLevels[i] ?? 1),
+      sound: preset.soundB,
+      volume: preset.volumeB,
+      bpm: (clampedBpm * clampedBeatsB) / clampedBeatsA,
+    };
+    const newGrid = lcm(clampedBeatsA, clampedBeatsB);
+    const safeMicro = Array.from({ length: newGrid }, (_, i) => preset.microAccents[i] ?? false);
+
+    setTrackA(newA);
+    setTrackB(newB);
+    setBpmState(clampedBpm);
+    setVolumeA(preset.volumeA);
+    setVolumeB(preset.volumeB);
+    setMicroAccents(safeMicro);
+    audioEngine.setVolume('A', preset.volumeA);
+    audioEngine.setVolume('B', preset.volumeB);
+
+    if (audioEngine.playing) {
+      audioEngine.setBeats(clampedBeatsA, clampedBeatsB, newA.accents, newB.accents);
+      audioEngine.setMasterBpm(clampedBpm);
+      audioEngine.updateTrack(newA);
+      audioEngine.updateTrack(newB);
+      audioEngine.setMicroAccents(safeMicro);
+    }
+  }, []);
+
   const changeVolume = useCallback((channel: 'A' | 'B' | 'micro' | 'pulse', value: number) => {
     audioEngine.setVolume(channel, value);
     switch (channel) {
@@ -241,5 +284,6 @@ export function useMetronome() {
     setSound,
     pulseFreq,
     setPulseFreq,
+    loadPreset,
   };
 }

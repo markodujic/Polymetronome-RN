@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~55.0.6",
+    "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/slider": "^5.1.2",
     "@react-native-picker/picker": "^2.11.4",
     "babel-preset-expo": "^55.0.10",

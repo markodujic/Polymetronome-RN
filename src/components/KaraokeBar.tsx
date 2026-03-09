@@ -10,6 +10,7 @@ interface KaraokeBarProps {
   activeBeatB: number | null;
   isPlaying: boolean;
   karaokeOn: boolean;
+  customPhrases?: Record<number, string>;
 }
 
 const TYPE_COLORS: Record<'a' | 'b' | 'ab', string> = {
@@ -21,10 +22,10 @@ const TYPE_COLORS: Record<'a' | 'b' | 'ab', string> = {
 export function KaraokeBar({
   trackA, trackB,
   activeBeatA, activeBeatB,
-  isPlaying, karaokeOn,
+  isPlaying, karaokeOn, customPhrases,
 }: KaraokeBarProps) {
   const { text, typeCls, isLong, isActive, flashKey, cyclePhrase } =
-    useKaraokeSyllable(trackA, trackB, activeBeatA, activeBeatB, isPlaying);
+    useKaraokeSyllable(trackA, trackB, activeBeatA, activeBeatB, isPlaying, customPhrases);
 
   // Impulse effect: scale 1.25→1 + #7dd3fc glow → textcolor, like web-app karaoke-pulse
   const scaleAnim = useRef(new Animated.Value(1)).current;

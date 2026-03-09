@@ -2,7 +2,7 @@ import './global.css';
 import { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, useWindowDimensions,
+  StyleSheet, useWindowDimensions, Alert, Pressable,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -10,10 +10,12 @@ import * as Haptics from 'expo-haptics';
 import Slider from '@react-native-community/slider';
 import { GlowSlider } from './src/components/GlowSlider';
 import { useMetronome } from './src/hooks/useMetronome';
+import { usePresets } from './src/hooks/usePresets';
 import { RhythmTrack } from './src/components/RhythmTrack';
 import { PolyCanvas } from './src/components/PolyCanvas';
 import { CircleViz } from './src/components/CircleViz';
 import { KaraokeBar } from './src/components/KaraokeBar';
+import { SettingsSheet } from './src/components/SettingsSheet';
 import type { ClickSound } from './src/audio/AudioEngine';
 
 export default function App() {
@@ -24,7 +26,10 @@ export default function App() {
     microAccents, toggle, applyBpm,
     setBeats, cycleBeatLevel, changeVolume,
     toggleMicroAccent, toggleAccent, setSound, pulseFreq, setPulseFreq,
+    loadPreset,
   } = useMetronome();
+
+  const [presets, savePreset] = usePresets();
 
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
@@ -32,6 +37,12 @@ export default function App() {
   const [focusedTrack, setFocusedTrack] = useState<'A' | 'B'>('A');
   const [viewMode, setViewMode] = useState<'raster' | 'circle'>('raster');
   const [karaokeOn, setKaraokeOn] = useState(true);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [customPhrases, setCustomPhrases] = useState<Record<number, string>>({});
+
+  const handleCustomPhrase = useCallback((sylCount: number, text: string) => {
+    setCustomPhrases(prev => ({ ...prev, [sylCount]: text }));
+  }, []);
 
   // Mute toggle refs
   const prevVolARef = useRef(0.8);
@@ -111,16 +122,45 @@ export default function App() {
 
       {/* Preset canvas */}
       <View style={styles.presetCanvas}>
-        {PRESETS.map((p) => (
-          <TouchableOpacity
-            key={p.label}
-            style={styles.presetBtn}
-            onPress={() => { applyBpm(p.bpm); setBeatsA(p.beatsA); setBeatsB(p.beatsB); }}
+        {presets.map((p, i) => (
+          <Pressable
+            key={i}
+            style={({ pressed }) => [
+              styles.presetBtn,
+              pressed && styles.presetBtnPressed,
+            ]}
+            onPress={() => loadPreset(p)}
+            onLongPress={() => {
+              const newLabel = `${trackA.beats}:${trackB.beats} @ ${bpm}`;
+              Alert.alert(
+                'Preset speichern',
+                `Slot ${i + 1} mit dem aktuellen Muster überschreiben?\n"${newLabel}"`,
+                [
+                  { text: 'Abbrechen', style: 'cancel' },
+                  {
+                    text: 'Speichern',
+                    onPress: () => savePreset(i, {
+                      bpm,
+                      beatsA: trackA.beats,
+                      beatsB: trackB.beats,
+                      beatLevels: trackB.beatLevels,
+                      accentsA: trackA.accents,
+                      microAccents,
+                      soundA: trackA.sound,
+                      soundB: trackB.sound,
+                      volumeA,
+                      volumeB,
+                    }),
+                  },
+                ],
+              );
+            }}
+            delayLongPress={350}
             accessibilityLabel={p.label}
           >
             <Text style={styles.presetLabel}>{p.label}</Text>
             <Text style={styles.presetSub}>{p.beatsA}:{p.beatsB}</Text>
-          </TouchableOpacity>
+          </Pressable>
         ))}
       </View>
 
@@ -207,6 +247,7 @@ export default function App() {
           trackA={trackA} trackB={trackB}
           activeBeatA={activeBeatA} activeBeatB={activeBeatB}
           isPlaying={isPlaying} karaokeOn={karaokeOn}
+          customPhrases={customPhrases}
         />
       )}
     </View>
@@ -231,6 +272,7 @@ export default function App() {
       </TouchableOpacity>
       <TouchableOpacity
         style={styles.settingsBtn}
+        onPress={() => setSettingsVisible(true)}
         accessibilityLabel="Einstellungen"
       >
         <Text style={styles.settingsBtnIcon}>⚙️</Text>
@@ -239,6 +281,7 @@ export default function App() {
   );
 
   return (
+    <>
     <SafeAreaProvider>
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
@@ -267,6 +310,19 @@ export default function App() {
       )}
     </SafeAreaView>
     </SafeAreaProvider>
+    <SettingsSheet
+      visible={settingsVisible}
+      onClose={() => setSettingsVisible(false)}
+      soundA={trackA.sound}
+      soundB={trackB.sound}
+      onSoundA={setSoundA}
+      onSoundB={setSoundB}
+      karaokeOn={karaokeOn}
+      onToggleKaraoke={() => setKaraokeOn(v => !v)}
+      customPhrases={customPhrases}
+      onCustomPhrase={handleCustomPhrase}
+    />
+    </>
   );
 }
 
@@ -298,17 +354,6 @@ function CompactSlider({
     </View>
   );
 }
-
-const PRESETS = [
-  { label: '4/4',  bpm: 120, beatsA: 4, beatsB: 4 },
-  { label: '3/4',  bpm: 120, beatsA: 3, beatsB: 3 },
-  { label: '6/8',  bpm: 120, beatsA: 6, beatsB: 3 },
-  { label: '5/4',  bpm: 100, beatsA: 5, beatsB: 4 },
-  { label: '3:2',  bpm: 120, beatsA: 3, beatsB: 2 },
-  { label: '4:3',  bpm: 120, beatsA: 4, beatsB: 3 },
-  { label: '5:3',  bpm: 100, beatsA: 5, beatsB: 3 },
-  { label: '7:4',  bpm: 100, beatsA: 7, beatsB: 4 },
-];
 
 const BG = '#0f0f0f';
 const BG2 = '#1a1a2e';
@@ -458,6 +503,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: BORDER,
+  },
+  presetBtnPressed: {
+    backgroundColor: '#2a3050',
+    borderColor: ACCENT,
   },
   presetLabel: {
     color: '#e0e0e0',
