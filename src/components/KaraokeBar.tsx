@@ -38,7 +38,7 @@ export function KaraokeBar({
       scaleAnim.setValue(1.25);
       glowAnim.setValue(1);
       // Run separately – parallel() does not allow mixing useNativeDriver true/false
-      Animated.timing(scaleAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(scaleAnim, { toValue: 1, duration: 300, useNativeDriver: Platform.OS !== 'web' }).start();
       Animated.timing(glowAnim, { toValue: 0, duration: 300, useNativeDriver: false }).start();
     }
   }, [flashKey, isActive, scaleAnim, glowAnim]);

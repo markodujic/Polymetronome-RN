@@ -9,6 +9,7 @@ import {
   ScrollView,
   Switch,
   TextInput,
+  Platform,
 } from 'react-native';
 import type { ClickSound } from '../audio/AudioEngine';
 
@@ -63,7 +64,7 @@ export function SettingsSheet({
     if (visible) {
       Animated.spring(translateY, {
         toValue: 0,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
         bounciness: 4,
         speed: 14,
       }).start();
@@ -71,7 +72,7 @@ export function SettingsSheet({
       Animated.timing(translateY, {
         toValue: SHEET_HEIGHT,
         duration: 220,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }).start();
     }
   }, [visible, translateY]);

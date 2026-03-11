@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.8.0] – 2026-03-11
+
+### Changed
+- **Preset save-mode**: Knöpfe zeigen im Save-Mode weiterhin den gespeicherten Inhalt (PresetMiniGrid) — keine gelben Zahlen mehr. Stattdessen gelber Glow-Rand (`borderColor + shadow/elevation`).
+- **Preset save feedback**: Grüner Haken nach dem Speichern entfernt. Stattdessen: kurzer gelber Glow-Impuls (Animated.Value 1→0, 900 ms) + haptisches Feedback (`Haptics.notificationAsync(Success)`).
+- **PresetMiniGrid**: Ratio-Text vergrößert (9 → 13 px, heller Farbton). Beat-Dots auf proportionales Timeline-Layout umgestellt: beide Tracks verwenden dieselbe Containerbreite, Dots sitzen bei `left: (i/beats)*100%` → Polyrhythmus-Verhältnis visuell erkennbar.
+- **CircleViz responsive**: Fixe `vizSize`-Schätzung (`height * 0.45`) durch `onLayout`-Messung am Container ersetzt — Kreis füllt jetzt exakt den verfügbaren Platz auf jedem Bildschirm.
+- **Web-Warnungen bereinigt**: `useNativeDriver: true` → `Platform.OS !== 'web'` in KaraokeBar, CircleViz, PolyCanvas, SettingsSheet. `shadow*`-Props in `presetBtnSaveMode` durch `Platform.select({ native, web: boxShadow })` ersetzt.
+
+### Added
+- **`.github/copilot-instructions.md`** – persistente Projektübersicht für Copilot-Sessions (Architektur, Konventionen, Build-Befehle, Referenz-Dateien).
+
+---
+
 ## [1.7.0] – 2026-03-09
 
 ### Added

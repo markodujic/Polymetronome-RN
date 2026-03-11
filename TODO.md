@@ -16,7 +16,7 @@
 - [ ] **Metronome swing** – swing/shuffle percentage slider for Track A
 - [ ] **Tempo ramp** – gradually increase BPM over a set number of bars
 - [ ] **Measure counter** – display the current measure number during playback
-- [ ] **Haptic feedback** – `navigator.vibrate()` on beat 1 for tactile mobile feedback
+- [x] **Haptic feedback** – `Haptics.notificationAsync(Success)` beim Speichern eines Presets
 - [x] **Visual pendulum / circle visualizer** – Circle view with two concentric rings, comet-tail sweep, accent gap ring, toggleable via ⊞/◎ button
 - [x] **Karaoke phrase display** – funny English phrases synced to union-beat grid; CAPS for held syllables; 💬 toggle; shown in Raster bar and in Circle center
 - [x] **Landscape layout** – two-column CSS Grid layout when phone is rotated
@@ -34,6 +34,14 @@
 - [ ] At very high BPM (>240) with large beat counts the LCM grid in `PolyCanvas` can become very dense (e.g. 5:7 = 35 cells) and individual cells visually very narrow on small screens
 
 ---
+
+## Recently Fixed (1.8.0)
+
+- [x] **Preset save-mode zeigt Zahlen** – PresetMiniGrid bleibt immer sichtbar, Save-Mode nur durch gelben Glow-Rand signalisiert
+- [x] **Preset save-Feedback** – grüner Haken ersetzt durch Glow-Impuls + Haptics.notificationAsync
+- [x] **PresetMiniGrid nicht lesbar** – Ratio-Text 9→13 px; Dots auf proportionales LCM-Timeline-Layout umgestellt
+- [x] **CircleViz abgeschnitten** – `onLayout`-basiertes `vizSize` statt fester Schätzung
+- [x] **Web-Animationswarnungen** – `useNativeDriver` plattformabhängig; `shadow*` → `Platform.select`
 
 ## Recently Fixed (1.7.0)
 

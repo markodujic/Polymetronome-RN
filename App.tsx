@@ -2,7 +2,7 @@ import './global.css';
 import { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, useWindowDimensions, Pressable, Platform,
+  StyleSheet, useWindowDimensions, Pressable, Platform, Animated,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -23,20 +23,35 @@ function PresetMiniGrid({ beatsA, beatsB, accentsA, accentsB, slotNum }: {
   accentsA: boolean[]; accentsB: boolean[];
   slotNum: number;
 }) {
+  const DOT = 5;
   return (
     <View style={pgStyles.wrapper}>
       <View style={pgStyles.header}>
         <Text style={pgStyles.ratio}>{beatsA}:{beatsB}</Text>
         <Text style={pgStyles.slotNum}>{slotNum}</Text>
       </View>
-      <View style={pgStyles.row}>
+      {/* Track A — dots positioned proportionally along the timeline */}
+      <View style={pgStyles.timeline}>
         {Array.from({ length: beatsA }, (_, i) => (
-          <View key={i} style={[pgStyles.dot, { backgroundColor: (accentsA[i] ?? false) ? '#ff6b35' : 'rgba(255,107,53,0.55)' }]} />
+          <View
+            key={i}
+            style={[
+              pgStyles.dot,
+              { left: `${(i / beatsA) * 100}%`, backgroundColor: (accentsA[i] ?? false) ? '#ff6b35' : 'rgba(255,107,53,0.55)' },
+            ]}
+          />
         ))}
       </View>
-      <View style={pgStyles.row}>
+      {/* Track B — same timeline width, different spacing = visible polyrhythm */}
+      <View style={pgStyles.timeline}>
         {Array.from({ length: beatsB }, (_, i) => (
-          <View key={i} style={[pgStyles.dot, { backgroundColor: (accentsB[i] ?? false) ? '#e8aa14' : 'rgba(232,170,20,0.55)' }]} />
+          <View
+            key={i}
+            style={[
+              pgStyles.dot,
+              { left: `${(i / beatsB) * 100}%`, backgroundColor: (accentsB[i] ?? false) ? '#e8aa14' : 'rgba(232,170,20,0.55)' },
+            ]}
+          />
         ))}
       </View>
     </View>
@@ -44,12 +59,12 @@ function PresetMiniGrid({ beatsA, beatsB, accentsA, accentsB, slotNum }: {
 }
 
 const pgStyles = StyleSheet.create({
-  wrapper: { width: '100%', paddingHorizontal: 5, paddingVertical: 3 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
-  ratio: { color: '#c0c8d8', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 },
-  slotNum: { color: '#5a6080', fontSize: 8, fontWeight: '700' },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginBottom: 2 },
-  dot: { width: 4, height: 4, borderRadius: 1 },
+  wrapper: { width: '100%', paddingHorizontal: 5, paddingVertical: 5 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  ratio: { color: '#e8eaf0', fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
+  slotNum: { color: '#5a6080', fontSize: 10, fontWeight: '700' },
+  timeline: { position: 'relative', width: '100%', height: 7, marginBottom: 3 },
+  dot: { position: 'absolute', top: 0, width: 5, height: 5, borderRadius: 2 },
 });
 
 export default function App() {
@@ -75,7 +90,7 @@ export default function App() {
   const [customPhrases, setCustomPhrases] = useState<Record<number, string>>({});
   const [isSaveMode, setIsSaveMode] = useState(false);
   const [savedSlotIdx, setSavedSlotIdx] = useState<number | null>(null);
-  const savedSlotTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedGlowAnim = useRef(new Animated.Value(0)).current;
 
   const handleCustomPhrase = useCallback((sylCount: number, text: string) => {
     setCustomPhrases(prev => ({ ...prev, [sylCount]: text }));
@@ -95,11 +110,16 @@ export default function App() {
       volumeA,
       volumeB,
     });
-    setSavedSlotIdx(i);
     setIsSaveMode(false);
-    if (savedSlotTimer.current) clearTimeout(savedSlotTimer.current);
-    savedSlotTimer.current = setTimeout(() => setSavedSlotIdx(null), 1200);
-  }, [bpm, trackA, trackB, microAccents, volumeA, volumeB, savePreset]);
+    try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
+    setSavedSlotIdx(i);
+    savedGlowAnim.setValue(1);
+    Animated.timing(savedGlowAnim, {
+      toValue: 0,
+      duration: 900,
+      useNativeDriver: false,
+    }).start(() => setSavedSlotIdx(null));
+  }, [bpm, trackA, trackB, microAccents, volumeA, volumeB, savePreset, savedGlowAnim]);
 
   // Mute toggle refs
   const prevVolARef = useRef(0.8);
@@ -181,22 +201,28 @@ export default function App() {
       <View style={styles.presetRow}>
         <View style={styles.presetCanvas}>
           {presets.map((p, i) => (
-            <Pressable
+            <Animated.View
               key={i}
-              style={({ pressed }) => [
-                styles.presetBtn,
-                isSaveMode && styles.presetBtnSaveMode,
-                savedSlotIdx === i && styles.presetBtnSaved,
-                pressed && styles.presetBtnPressed,
+              style={[
+                styles.presetBtnWrapper,
+                savedSlotIdx === i && Platform.OS !== 'web' && {
+                  shadowColor: '#f0c040',
+                  shadowOpacity: savedGlowAnim,
+                  shadowRadius: 14,
+                  shadowOffset: { width: 0, height: 0 },
+                  elevation: savedGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 12] }),
+                },
               ]}
-              onPress={() => isSaveMode ? handleSaveToSlot(i) : loadPreset(p)}
-              accessibilityLabel={isSaveMode ? `In Slot ${i + 1} speichern` : p.label}
             >
-              {savedSlotIdx === i ? (
-                <Text style={styles.presetLabelSaved}>✓</Text>
-              ) : isSaveMode ? (
-                <Text style={styles.presetLabelSaveMode}>{i + 1}</Text>
-              ) : (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.presetBtn,
+                  isSaveMode && styles.presetBtnSaveMode,
+                  pressed && styles.presetBtnPressed,
+                ]}
+                onPress={() => isSaveMode ? handleSaveToSlot(i) : loadPreset(p)}
+                accessibilityLabel={isSaveMode ? `In Slot ${i + 1} speichern` : p.label}
+              >
                 <PresetMiniGrid
                   beatsA={p.beatsA}
                   beatsB={p.beatsB}
@@ -204,8 +230,8 @@ export default function App() {
                   accentsB={p.accentsB ?? []}
                   slotNum={i + 1}
                 />
-              )}
-            </Pressable>
+              </Pressable>
+            </Animated.View>
           ))}
         </View>
         <Pressable
@@ -555,9 +581,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 6,
   },
-  presetBtn: {
+  presetBtnWrapper: {
     flex: 1,
     minWidth: '22%',
+    borderRadius: 8,
+  },
+  presetBtn: {
+    flex: 1,
     paddingVertical: 3,
     borderRadius: 8,
     backgroundColor: BG3,
@@ -568,13 +598,17 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   presetBtnSaveMode: {
-    borderStyle: 'dashed' as const,
-    borderColor: '#c8a000',
-  },
-  presetBtnSaved: {
-    borderStyle: 'solid' as const,
-    borderColor: '#22c55e',
-    backgroundColor: '#0d2a1a',
+    borderColor: '#f0c040',
+    ...Platform.select({
+      native: {
+        shadowColor: '#f0c040',
+        shadowOpacity: 0.9,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 0 },
+      },
+      web: { boxShadow: '0 0 10px rgba(240,192,64,0.9)' },
+    }),
+    elevation: 10,
   },
   presetBtnPressed: {
     backgroundColor: '#2a3050',
@@ -585,16 +619,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.5,
-  },
-  presetLabelSaveMode: {
-    color: '#f0c040',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  presetLabelSaved: {
-    color: '#22c55e',
-    fontSize: 16,
-    fontWeight: '700',
   },
   presetSub: {
     color: '#5a6080',

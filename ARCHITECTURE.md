@@ -64,7 +64,8 @@ Root component. Holds `focusedTrack: 'A' | 'B'`, `viewMode`, `karaokeOn` state.
 | `viewMode` | `'raster' \| 'circle'` | Toggle between Mikroraster and Circle view |
 | `karaokeOn` | `boolean` | Whether karaoke syllable display is active |
 | `isSaveMode` | `boolean` | When true, clicking a preset slot saves current state there |
-| `savedSlotIdx` | `number \| null` | Index of last saved slot (shows ✓ for 1.2 s) |
+| `savedSlotIdx` | `number \| null` | Index of last saved slot (drives glow animation) |
+| `savedGlowAnim` | `Animated.Value` | 1→0 fade-out over 900 ms; drives yellow glow on saved preset button |
 
 ---
 

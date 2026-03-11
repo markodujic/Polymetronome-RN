@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Text, Pressable, Animated, Platform, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, TouchableOpacity, Text, Pressable, Animated, Platform, StyleSheet } from 'react-native';
 import Svg, { G, Path, Circle } from 'react-native-svg';
 import { type MetronomeTrack } from '../audio/AudioEngine';
 import { useKaraokeSyllable } from '../hooks/useKaraokeSyllable';
@@ -148,8 +148,8 @@ export function CircleViz({
   microAccents = [],
   karaokeOn = false,
 }: CircleVizProps) {
-  const { width, height } = useWindowDimensions();
-  const vizSize = Math.min(width, height * 0.45, 300);
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+  const vizSize = Math.min(containerSize.w, containerSize.h);
   const [sweepA, setSweepA] = useState(0);
   const [sweepB, setSweepB] = useState(0);
   const lastBeatTimeARef = useRef<number>(0);
@@ -204,7 +204,7 @@ export function CircleViz({
       prevFlashKey.current = kar.flashKey;
       scaleAnim.setValue(1.25);
       glowAnim.setValue(1);
-      Animated.timing(scaleAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+      Animated.timing(scaleAnim, { toValue: 1, duration: 300, useNativeDriver: Platform.OS !== 'web' }).start();
       Animated.timing(glowAnim, { toValue: 0, duration: 300, useNativeDriver: false }).start();
     }
   }, [kar.flashKey, kar.isActive, scaleAnim, glowAnim]);
@@ -212,8 +212,14 @@ export function CircleViz({
   const shadowRadius = glowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 10] });
 
   return (
-    <View style={styles.outerWrapper}>
-    <View style={[styles.container, { width: vizSize, height: vizSize }]}>
+    <View
+      style={styles.outerWrapper}
+      onLayout={e => {
+        const { width, height } = e.nativeEvent.layout;
+        setContainerSize({ w: width, h: height });
+      }}
+    >
+    {vizSize > 0 && <View style={[styles.container, { width: vizSize, height: vizSize }]}>
       <Svg
         viewBox="0 0 300 300"
         width="100%"
@@ -272,7 +278,7 @@ export function CircleViz({
           />
         </>
       )}
-    </View>
+    </View>}
     </View>
   );
 }

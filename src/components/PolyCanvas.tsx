@@ -6,6 +6,7 @@ import {
   StyleSheet,
   LayoutChangeEvent,
   Animated,
+  Platform,
 } from 'react-native';
 import type { MetronomeTrack } from '../audio/AudioEngine';
 
@@ -48,7 +49,7 @@ function PulseGlow({ delay, intensity }: { delay: number; intensity: number }) {
       Animated.timing(opacity, {
         toValue: intensity,
         duration: 60,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }).start();
     }, delay * 1000);
     return () => clearTimeout(t);
