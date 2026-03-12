@@ -13,6 +13,7 @@ Zielplattform: primär **Android** (nativ), Web als Preview.
 - **`src/components/RhythmTrack.tsx`** – Kompakte Track-Zeile (Label, Beats, Volume)
 - **`src/components/PolyCanvas.tsx`** – Mikroraster (LCM-Grid-Canvas)
 - **`src/components/CircleViz.tsx`** – SVG Kreis-Visualizer mit Karaoke-Overlay
+- **`src/components/StepView.tsx`** – Step-Sequencer (geplant): rekursive Subdivision pro Beat, Design/Play-Toggle
 - **`src/components/KaraokeBar.tsx`** – Karaoke-Phrase-Leiste (Raster-Ansicht)
 - **`src/components/GlowSlider.tsx`** – Slider mit animiertem Halo
 - **`src/components/SettingsSheet.tsx`** – Bottom-Sheet: Sound-Wahl, Karaoke, Custom-Phrases
@@ -32,6 +33,7 @@ Zielplattform: primär **Android** (nativ), Web als Preview.
 | `CHANGELOG.md` | Was wann geändert wurde |
 | `TODO.md` | Offene Features + bekannte Bugs |
 | `RESPONSIVE_LAYOUT.md` | Proportionales No-Scroll-Layout: flex-Verhältnisse, scale-Formel, responsive Breakpoints |
+| `STEPSEQUENCER.md` | Step-Sequencer Konzept: rekursives Datenmodell, Flattening-Algorithmus, AudioEngine-Erweiterung |
 | `/memories/repo/android-emulation-setup.md` | Build-Befehle für Android-Emulator |
 
 ## Code-Konventionen
