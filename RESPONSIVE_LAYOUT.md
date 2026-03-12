@@ -9,20 +9,23 @@ egal ob großes oder kleines Handy. Kein ScrollView im Portrait-Modus.
 ## Portrait-Layout: Flex-Verhältnisse
 
 Die gesamte Bildschirmhöhe wird proportional auf 9 Sektionen aufgeteilt.  
-Der Canvas (PolyCanvas/CircleViz + KaraokeBar) bekommt immer **45 %** der Höhe.
+Der Canvas (PolyCanvas/CircleViz) bekommt immer **flex: 1** (alle verbleibende Höhe nach fixen Controls).  
+Die KaraokeBar ist eine **eigene Sektion** außerhalb des Canvas, damit der Canvas immer stabil bleibt.
 
-| # | Sektion | flex | ~600 px | ~780 px |
-|---|---|---|---|---|
-| 1 | headerRow (BPM + Logo) | 7 | 42 px | 55 px |
-| 2 | bpmControls (Slider + ±) | 5 | 30 px | 39 px |
-| 3 | presetRow (8 Slots) | 13 | 78 px | 101 px |
-| 4 | RhythmTrack A | 5 | 30 px | 39 px |
-| 5 | RhythmTrack B | 5 | 30 px | 39 px |
-| 6 | viewToggle (Grid / Circle) | 4 | 24 px | 31 px |
-| 7 | sliderGroup (Micro/Pulse/Hz) | 6 | 36 px | 47 px |
-| 8 | **Canvas** | **45** | **270 px** | **351 px** |
-| 9 | playBtnBar | 10 | 60 px | 78 px |
-| **Σ** | | **100** | **600 px** | **780 px** |
+**Implementierung:** Controls haben intrinsische Höhe (kein flex), Canvas nimmt den Rest via `flex: 1`.
+
+| # | Sektion | Höhe | Bemerkung |
+|---|---|---|---|
+| 1 | headerRow (BPM + Logo) | intrinsisch, skaliert | paddingTop/paddingBottom skaliert |
+| 2 | bpmControls (Slider + ±) | intrinsisch, skaliert | sliderHeight skaliert |
+| 3 | presetRow (8 Slots) | intrinsisch, skaliert | paddingVertical skaliert |
+| 4 | RhythmTrack A | intrinsisch, compact | compact={scale < 0.85} |
+| 5 | RhythmTrack B | intrinsisch, compact | compact={scale < 0.85} |
+| 6 | viewToggle (Grid / Circle) | intrinsisch, skaliert | paddingVertical skaliert |
+| 7 | sliderGroup (Micro/Pulse/Hz) | intrinsisch, skaliert | paddingVertical + sliderHeight skaliert |
+| 8 | **Canvas** (`canvasWrapper`) | **flex: 1** | nimmt ALLE verbleibende Höhe |
+| 9 | KaraokeBar | `max(36, 64*scale)` px | nur in Raster-Mode + karaokeOn; sonst height: 0 |
+| 10 | playBtnBar | intrinsisch, skaliert | paddingVertical + playBtn-Größe skaliert |
 
 ---
 
@@ -42,30 +45,37 @@ Ab `scale < 0.85` → **compact mode** aktiv.
 
 ## Responsive Anpassungen nach scale
 
-| Element | Normal | Compact (scale < 0.85) |
+| Element | Normal | Compact (scale < 0.85) / skaliert |
 |---|---|---|
-| `bpmValue` fontSize | 44 | `Math.max(28, 44 * scale)` |
-| `headerRow` paddingTop | 12 | `Math.max(4, 12 * scale)` |
-| `playBtn` width/height | 68 | `Math.max(48, 68 * scale)` |
-| `sliderGroup` paddingVertical | 6 | `Math.max(2, 6 * scale)` |
-| `viewToggle` paddingVertical | 10 | `Math.max(4, 10 * scale)` |
-| `presetRow` paddingVertical | 8 | `Math.max(3, 8 * scale)` |
-| GlowSlider `sliderHeight` (BPM) | 40 | `Math.max(28, 40 * scale)` |
-| GlowSlider `sliderHeight` (compact sliders) | 32 | `Math.max(22, 32 * scale)` |
+| `bpmValue` fontSize | 44 | `max(28, round(44 * scale))` |
+| `headerRow` paddingTop | 12 | `max(4, round(12 * scale))` |
+| `headerRow` paddingBottom | 4 | `max(2, round(4 * scale))` |
+| `bpmStepBtn` width/height | 36 | `max(28, round(36 * scale))` |
+| `GlowSlider` sliderHeight (BPM) | 40 | `max(28, round(40 * scale))` |
+| `presetCanvas` paddingVertical | 8 | `max(4, round(8 * scale))` |
+| `viewBtn` paddingVertical | 10 | `max(4, round(10 * scale))` |
+| `sliderGroup` paddingVertical | 6 | `max(2, round(6 * scale))` |
+| `GlowSlider` sliderHeight (compact sliders) | 32 | `max(22, round(32 * scale))` |
+| `KaraokeBar` height | 64 | `max(36, round(64 * scale))` |
+| `playBtn` width/height | 68 | `max(48, round(68 * scale))` |
+| `playBtnBar` paddingVertical | 12 | `max(6, round(12 * scale))` |
 
 ### RhythmTrack — `compact` prop
 ```tsx
 <RhythmTrack compact={scale < 0.85} ... />
 ```
-- Normal: `paddingVertical: 6`, `stepBtn: 28×28`, `sliderHeight: 28`
-- Compact: `paddingVertical: 3`, `stepBtn: 24×24`, `sliderHeight: 22`
+- Normal: `paddingVertical: 6`, `labelBtn: 32×32`, `stepBtn: 28×28`, `sliderHeight: 28`
+- Compact: `paddingVertical: 3`, `labelBtn: 26×26`, `stepBtn: 24×24`, `sliderHeight: 22`
 
-### KaraokeBar — `height` prop
+### KaraokeBar — außerhalb des Canvas, height-gesteuert
 ```tsx
-<KaraokeBar height={Math.max(40, 64 * scale)} ... />
+const karaokeBarH = (viewMode === 'raster' && karaokeOn) ? Math.max(36, Math.round(64 * scale)) : 0;
+<View style={{ height: karaokeBarH, overflow: 'hidden' }}>
+  <KaraokeBar ... />
+</View>
 ```
-- Normal: 64 px
-- Compact (scale 0.77): 49 px
+- KaraokeBar selbst bleibt unverändert (height: 64 intern)
+- Der Wrapper kollabiert zu 0 wenn karaoke aus oder circle-view aktiv
 
 ---
 
@@ -88,6 +98,6 @@ Im Landscape-Modus bleibt das bisherige Zwei-Spalten-Layout erhalten:
 
 ## Implementierungs-Reihenfolge
 
-1. **`App.tsx`** – ScrollView → View, flex-Gewichte, `scale` berechnen, dynamische Styles
-2. **`src/components/RhythmTrack.tsx`** – `compact?: boolean` prop
-3. **`src/components/KaraokeBar.tsx`** – `height?: number` prop (default: 64)
+1. **`App.tsx`** ✅ – ScrollView entfernt, `scale`/`compact` berechnet, dynamische Styles, KaraokeBar ausgelagert
+2. **`src/components/RhythmTrack.tsx`** ✅ – `compact?: boolean` prop + compact-Styles
+3. **`src/components/KaraokeBar.tsx`** – keine Änderung nötig (Höhe via Wrapper in App.tsx)

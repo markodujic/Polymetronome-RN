@@ -13,6 +13,7 @@ interface RhythmTrackProps {
   onBeats: (beats: number) => void;
   onVolume: (v: number) => void;
   onMute?: () => void;
+  compact?: boolean;
 }
 
 export const RhythmTrack = memo(function RhythmTrack({
@@ -25,15 +26,16 @@ export const RhythmTrack = memo(function RhythmTrack({
   onBeats,
   onVolume,
   onMute,
+  compact = false,
 }: RhythmTrackProps) {
   const accentColor = isMaster ? '#ff6b35' : '#e8aa14';
 
   return (
-    <View style={[styles.container, isSelected && styles.selected]}>
+    <View style={[styles.container, isSelected && styles.selected, compact && styles.containerCompact]}>
       {/* Single compact row: label | − beats + | mute | slider | picker */}
       <View style={styles.row}>
         <TouchableOpacity
-          style={[styles.labelBtn, { backgroundColor: accentColor }]}
+          style={[styles.labelBtn, { backgroundColor: accentColor }, compact && styles.labelBtnCompact]}
           onPress={onSelect}
           accessibilityRole="button"
           accessibilityState={{ selected: isSelected }}
@@ -43,11 +45,11 @@ export const RhythmTrack = memo(function RhythmTrack({
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.stepBtn} onPress={() => onBeats(track.beats - 1)}>
+        <TouchableOpacity style={[styles.stepBtn, compact && styles.stepBtnCompact]} onPress={() => onBeats(track.beats - 1)}>
           <Text style={styles.stepBtnText}>−</Text>
         </TouchableOpacity>
         <Text style={styles.beatsValue}>{track.beats}</Text>
-        <TouchableOpacity style={styles.stepBtn} onPress={() => onBeats(track.beats + 1)}>
+        <TouchableOpacity style={[styles.stepBtn, compact && styles.stepBtnCompact]} onPress={() => onBeats(track.beats + 1)}>
           <Text style={styles.stepBtnText}>+</Text>
         </TouchableOpacity>
 
@@ -56,7 +58,7 @@ export const RhythmTrack = memo(function RhythmTrack({
         </TouchableOpacity>
 
         <GlowSlider
-          sliderHeight={28}
+          sliderHeight={compact ? 22 : 28}
           glowColor={accentColor}
           muted={volume === 0}
           value={volume}
@@ -82,6 +84,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },
+  containerCompact: {
+    paddingVertical: 3,
+  },
   selected: {
     backgroundColor: BG2,
   },
@@ -97,6 +102,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  labelBtnCompact: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+  },
   labelText: {
     fontSize: 13,
     fontWeight: '700',
@@ -108,6 +118,10 @@ const styles = StyleSheet.create({
     backgroundColor: BG3,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  stepBtnCompact: {
+    width: 24,
+    height: 24,
   },
   stepBtnText: {
     color: '#8892b0',
