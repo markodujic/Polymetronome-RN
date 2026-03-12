@@ -119,9 +119,9 @@ export const PolyCanvas = memo(function PolyCanvas({
   const cellWidth = containerWidth / gridSize;
   // Dynamic cell height: fill available container height
   const cellHeight = Math.max(80, containerHeight);
-  // flex values for focused row
-  const flexA = focusedTrack === 'A' ? 3 : 1;
-  const flexB = focusedTrack === 'B' ? 3 : 1;
+  // focused track gets 2/3, other gets 1/3
+  const flexA = focusedTrack === 'A' ? 2 : 1;
+  const flexB = focusedTrack === 'B' ? 2 : 1;
   const rowAHeight = (cellHeight - ACCENT_H) * (flexA / (flexA + flexB));
   const rowBHeight = (cellHeight - ACCENT_H) * (flexB / (flexA + flexB));
 
