@@ -36,6 +36,8 @@ interface Props {
   onSoundB: (s: ClickSound) => void;
   karaokeOn: boolean;
   onToggleKaraoke: () => void;
+  karaokeTrack: 'a' | 'b' | 'ab';
+  onKaraokeTrack: (t: 'a' | 'b' | 'ab') => void;
   customPhrases: Record<number, string>;
   onCustomPhrase: (sylCount: number, text: string) => void;
 }
@@ -49,6 +51,8 @@ export function SettingsSheet({
   onSoundB,
   karaokeOn,
   onToggleKaraoke,
+  karaokeTrack,
+  onKaraokeTrack,
   customPhrases,
   onCustomPhrase,
 }: Props) {
@@ -169,6 +173,37 @@ export function SettingsSheet({
             />
           </View>
 
+          {karaokeOn && (
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>Spruch für</Text>
+              <View style={styles.btnGroup}>
+                {(['a', 'ab', 'b'] as const).map((t) => (
+                  <TouchableOpacity
+                    key={t}
+                    style={[
+                      styles.soundBtn,
+                      karaokeTrack === t && (
+                        t === 'a' ? styles.soundBtnActiveA
+                        : t === 'b' ? styles.soundBtnActiveB
+                        : styles.soundBtnActiveAB
+                      ),
+                    ]}
+                    onPress={() => onKaraokeTrack(t)}
+                  >
+                    <Text
+                      style={[
+                        styles.soundBtnTxt,
+                        karaokeTrack === t && styles.soundBtnTxtActive,
+                      ]}
+                    >
+                      {t === 'ab' ? 'A+B' : t.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
           {/* ── EIGENE SPRÜCHE ── */}
           <Text style={[styles.sectionTitle, { marginTop: 20 }]}>EIGENE SPRÜCHE</Text>
           <Text style={styles.sylHint}>Pro Silbenanzahl einen eigenen Spruch definieren · Wörter durch Leerzeichen trennen</Text>
@@ -283,6 +318,10 @@ const styles = StyleSheet.create({
   soundBtnActiveB: {
     backgroundColor: ACCENT_B,
     borderColor: ACCENT_B,
+  },
+  soundBtnActiveAB: {
+    backgroundColor: '#ffffff22',
+    borderColor: '#ffffff',
   },
   soundBtnTxt: {
     color: '#8892b0',

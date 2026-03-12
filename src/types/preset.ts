@@ -13,4 +13,5 @@ export interface Preset {
   soundB: ClickSound;
   volumeA: number;
   volumeB: number;
+  karaokeTrack?: 'a' | 'b' | 'ab';
 }

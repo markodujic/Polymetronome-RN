@@ -10,6 +10,8 @@ interface KaraokeBarProps {
   activeBeatB: number | null;
   isPlaying: boolean;
   karaokeOn: boolean;
+  karaokeTrack?: 'a' | 'b' | 'ab';
+  onKaraokeTrack?: (t: 'a' | 'b' | 'ab') => void;
   customPhrases?: Record<number, string>;
 }
 
@@ -22,10 +24,10 @@ const TYPE_COLORS: Record<'a' | 'b' | 'ab', string> = {
 export function KaraokeBar({
   trackA, trackB,
   activeBeatA, activeBeatB,
-  isPlaying, karaokeOn, customPhrases,
+  isPlaying, karaokeOn, karaokeTrack = 'ab', onKaraokeTrack, customPhrases,
 }: KaraokeBarProps) {
   const { text, typeCls, isLong, isActive, flashKey, cyclePhrase } =
-    useKaraokeSyllable(trackA, trackB, activeBeatA, activeBeatB, isPlaying, customPhrases);
+    useKaraokeSyllable(trackA, trackB, activeBeatA, activeBeatB, isPlaying, customPhrases, karaokeTrack);
 
   // Impulse effect: scale 1.25→1 + #7dd3fc glow → textcolor, like web-app karaoke-pulse
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -49,29 +51,45 @@ export function KaraokeBar({
   return (
     <View style={styles.container}>
       {karaokeOn && (
-        <TouchableOpacity
-          style={styles.sylRow}
-          onPress={cyclePhrase}
-          accessibilityLabel="Next phrase"
-        >
-          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-            <Animated.Text
-              style={[
-                styles.syllable,
-                { color: textColor },
-                isLong && styles.syllableLong,
-                !isPlaying && styles.syllablePreview,
-                Platform.OS !== 'web' && {
-                  textShadowColor: 'rgba(125, 211, 252, 0.9)',
-                  textShadowOffset: { width: 0, height: 0 },
-                  textShadowRadius: shadowRadius,
-                },
-              ]}
-            >
-              {text}
-            </Animated.Text>
-          </Animated.View>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity
+            style={styles.sylRow}
+            onPress={cyclePhrase}
+            accessibilityLabel="Next phrase"
+          >
+            <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+              <Animated.Text
+                style={[
+                  styles.syllable,
+                  { color: textColor },
+                  isLong && styles.syllableLong,
+                  !isPlaying && styles.syllablePreview,
+                  Platform.OS !== 'web' && {
+                    textShadowColor: 'rgba(125, 211, 252, 0.9)',
+                    textShadowOffset: { width: 0, height: 0 },
+                    textShadowRadius: shadowRadius,
+                  },
+                ]}
+              >
+                {text}
+              </Animated.Text>
+            </Animated.View>
+          </TouchableOpacity>
+          {/* A | A+B | B Toggle */}
+          <View style={styles.trackToggle}>
+            {(['a', 'ab', 'b'] as const).map((t) => (
+              <TouchableOpacity
+                key={t}
+                style={[styles.trackBtn, karaokeTrack === t && { borderColor: TYPE_COLORS[t] }]}
+                onPress={() => onKaraokeTrack?.(t)}
+              >
+                <Text style={[styles.trackBtnTxt, karaokeTrack === t && { color: TYPE_COLORS[t] }]}>
+                  {t === 'ab' ? 'A+B' : t.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
       )}
     </View>
   );
@@ -103,5 +121,28 @@ const styles = StyleSheet.create({
   },
   syllablePreview: {
     opacity: 0.4,
+  },
+  trackToggle: {
+    position: 'absolute',
+    right: 8,
+    top: 0,
+    bottom: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  trackBtn: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#2a2a4a',
+    backgroundColor: '#16213e',
+  },
+  trackBtnTxt: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#3a4060',
+    letterSpacing: 0.5,
   },
 });

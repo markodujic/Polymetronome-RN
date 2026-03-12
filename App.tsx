@@ -91,6 +91,7 @@ export default function App() {
   const [focusedTrack, setFocusedTrack] = useState<'A' | 'B'>('A');
   const [viewMode, setViewMode] = useState<'raster' | 'circle'>('raster');
   const [karaokeOn, setKaraokeOn] = useState(true);
+  const [karaokeTrack, setKaraokeTrack] = useState<'a' | 'b' | 'ab'>('ab');
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [customPhrases, setCustomPhrases] = useState<Record<number, string>>({});
   const [isSaveMode, setIsSaveMode] = useState(false);
@@ -114,6 +115,7 @@ export default function App() {
       soundB: trackB.sound,
       volumeA,
       volumeB,
+      karaokeTrack,
     });
     setIsSaveMode(false);
     try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
@@ -232,7 +234,7 @@ export default function App() {
                   isSaveMode && styles.presetBtnSaveMode,
                   pressed && styles.presetBtnPressed,
                 ]}
-                onPress={() => isSaveMode ? handleSaveToSlot(i) : loadPreset(p)}
+                onPress={() => isSaveMode ? handleSaveToSlot(i) : (loadPreset(p), setKaraokeTrack(p.karaokeTrack ?? 'ab'))}
                 accessibilityLabel={isSaveMode ? `In Slot ${i + 1} speichern` : p.label}
               >
                 <PresetMiniGrid
@@ -338,6 +340,9 @@ export default function App() {
           isPlaying={isPlaying} beatIntervalSec={beatIntervalSec}
           microAccents={microAccents}
           karaokeOn={karaokeOn}
+          customPhrases={customPhrases}
+          karaokeTrack={karaokeTrack}
+          onKaraokeTrack={setKaraokeTrack}
         />
       )}
     </View>
@@ -403,6 +408,8 @@ export default function App() {
               trackA={trackA} trackB={trackB}
               activeBeatA={activeBeatA} activeBeatB={activeBeatB}
               isPlaying={isPlaying} karaokeOn={karaokeOn}
+              karaokeTrack={karaokeTrack}
+              onKaraokeTrack={setKaraokeTrack}
               customPhrases={customPhrases}
             />
           </View>
@@ -420,6 +427,8 @@ export default function App() {
       onSoundB={setSoundB}
       karaokeOn={karaokeOn}
       onToggleKaraoke={() => setKaraokeOn(v => !v)}
+      karaokeTrack={karaokeTrack}
+      onKaraokeTrack={setKaraokeTrack}
       customPhrases={customPhrases}
       onCustomPhrase={handleCustomPhrase}
     />

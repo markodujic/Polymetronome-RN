@@ -85,8 +85,10 @@ export function useKaraokeSyllable(
   activeBeatB: number | null,
   isPlaying: boolean,
   customPhrases?: Record<number, string>,
+  karaokeTrack: 'a' | 'b' | 'ab' = 'ab',
 ): KaraokeSyllable {
-  const { unionPos, aToSyl, bToSyl, sylType, sylCount } = useMemo(() => {
+  // ── A+B mode: LCM-Union (original behaviour) ──────────────────────────────
+  const abData = useMemo(() => {
     const l = _lcm(trackA.beats, trackB.beats);
     const aSet = new Set<number>();
     const bSet = new Set<number>();
@@ -102,8 +104,43 @@ export function useKaraokeSyllable(
     return { unionPos: union, aToSyl: a2s, bToSyl: b2s, sylType: types, sylCount: union.length };
   }, [trackA.beats, trackB.beats]);
 
+  // ── A / B mode: simple single-track mapping ───────────────────────────────
+  const singleData = useMemo(() => {
+    if (karaokeTrack === 'a') {
+      return {
+        sylCount: trackA.beats,
+        sylType: Array.from<'a' | 'b' | 'ab'>({ length: trackA.beats }, () => 'a'),
+        beatToSyl: Array.from({ length: trackA.beats }, (_, i) => i),
+      };
+    }
+    // B mode: only active beats (beatLevels > 0) get a syllable
+    const activeIndices = trackB.beatLevels
+      .map((lvl, i) => ({ lvl, i }))
+      .filter(({ lvl }) => lvl > 0)
+      .map(({ i }) => i);
+    const activeSylCount = activeIndices.length || 1;
+    const beatToSylB = Array.from<number>({ length: trackB.beats }, () => -1);
+    activeIndices.forEach((beatIdx, sylIdx) => { beatToSylB[beatIdx] = sylIdx; });
+    return {
+      sylCount: activeSylCount,
+      sylType: Array.from<'a' | 'b' | 'ab'>({ length: activeSylCount }, () => 'b'),
+      beatToSyl: beatToSylB,
+    };
+  }, [karaokeTrack, trackA.beats, trackB.beats, trackB.beatLevels]);
+
+  const { unionPos, aToSyl, bToSyl, sylType, sylCount } = karaokeTrack === 'ab'
+    ? abData
+    : {
+        unionPos: [] as number[],
+        aToSyl: karaokeTrack === 'a' ? singleData.beatToSyl : abData.aToSyl,
+        bToSyl: karaokeTrack === 'b' ? singleData.beatToSyl : abData.bToSyl,
+        sylType: singleData.sylType,
+        sylCount: singleData.sylCount,
+      };
+
   const longSyls = useMemo(() => {
     const set = new Set<number>();
+    if (karaokeTrack !== 'ab') return set; // uniform spacing in single-track mode
     if (sylCount <= 1) return set;
     const l = _lcm(trackA.beats, trackB.beats);
     const gaps = unionPos.map((pos, i) =>
@@ -113,7 +150,7 @@ export function useKaraokeSyllable(
     if (maxG === Math.min(...gaps)) return set;
     gaps.forEach((g, i) => { if (g === maxG) set.add(i); });
     return set;
-  }, [unionPos, sylCount, trackA.beats, trackB.beats]);
+  }, [unionPos, sylCount, trackA.beats, trackB.beats, karaokeTrack]);
 
   const phrases = useMemo(() => {
     const custom = customPhrases?.[sylCount];
@@ -124,6 +161,7 @@ export function useKaraokeSyllable(
     }
     return getPhrasesForCount(sylCount);
   }, [sylCount, customPhrases]);
+
   const [phraseIdx, setPhraseIdx] = useState(0);
   const [activeSylIdx, setActiveSylIdx] = useState<number | null>(null);
   const [flashKey, setFlashKey] = useState(0);
@@ -131,10 +169,11 @@ export function useKaraokeSyllable(
 
   const currentPhrase = phrases[phraseIdx % phrases.length];
 
-  useEffect(() => { setPhraseIdx(0); }, [trackA.beats, trackB.beats]);
+  useEffect(() => { setPhraseIdx(0); }, [trackA.beats, trackB.beats, karaokeTrack]);
   useEffect(() => { if (!isPlaying) setActiveSylIdx(null); }, [isPlaying]);
 
   useEffect(() => {
+    if (karaokeTrack === 'b') return; // Track A beats ignored in B-only mode
     if (activeBeatA !== null && aToSyl[activeBeatA] !== undefined) {
       setActiveSylIdx(aToSyl[activeBeatA]);
       const now = Date.now();
@@ -143,18 +182,21 @@ export function useKaraokeSyllable(
         setFlashKey(k => k + 1);
       }
     }
-  }, [activeBeatA, aToSyl]);
+  }, [activeBeatA, aToSyl, karaokeTrack]);
 
   useEffect(() => {
-    if (activeBeatB !== null && bToSyl[activeBeatB] !== undefined) {
-      setActiveSylIdx(bToSyl[activeBeatB]);
+    if (karaokeTrack === 'a') return; // Track B beats ignored in A-only mode
+    if (activeBeatB !== null) {
+      const sylIdx = bToSyl[activeBeatB];
+      if (sylIdx === undefined || sylIdx === -1) return; // muted beat → skip
+      setActiveSylIdx(sylIdx);
       const now = Date.now();
       if (now - lastFlashMsRef.current > 30) {
         lastFlashMsRef.current = now;
         setFlashKey(k => k + 1);
       }
     }
-  }, [activeBeatB, bToSyl]);
+  }, [activeBeatB, bToSyl, karaokeTrack]);
 
   const cyclePhrase = useCallback(() => {
     setPhraseIdx(i => (i + 1) % phrases.length);

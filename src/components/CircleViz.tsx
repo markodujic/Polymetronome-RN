@@ -13,6 +13,9 @@ interface CircleVizProps {
   beatIntervalSec: number;
   microAccents?: boolean[];
   karaokeOn?: boolean;
+  karaokeTrack?: 'a' | 'b' | 'ab';
+  onKaraokeTrack?: (t: 'a' | 'b' | 'ab') => void;
+  customPhrases?: Record<number, string>;
 }
 
 const CX = 150;
@@ -147,6 +150,9 @@ export function CircleViz({
   isPlaying, beatIntervalSec,
   microAccents = [],
   karaokeOn = false,
+  karaokeTrack = 'ab',
+  onKaraokeTrack,
+  customPhrases,
 }: CircleVizProps) {
   const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
   const vizSize = Math.min(containerSize.w, containerSize.h);
@@ -191,7 +197,7 @@ export function CircleViz({
     };
   }, [isPlaying, beatIntervalSec, trackA.beats, trackB.beats]);
 
-  const kar = useKaraokeSyllable(trackA, trackB, activeBeatA, activeBeatB, isPlaying);
+  const kar = useKaraokeSyllable(trackA, trackB, activeBeatA, activeBeatB, isPlaying, customPhrases, karaokeTrack);
 
   const sylColor = kar.typeCls === 'a' ? COLORS.sylA : kar.typeCls === 'b' ? COLORS.sylB : COLORS.sylAB;
 
@@ -276,6 +282,24 @@ export function CircleViz({
             onPress={kar.cyclePhrase}
             accessibilityLabel="Phrase wechseln"
           />
+          {/* A | A+B | B Toggle */}
+          <View style={styles.trackToggle}>
+            {(['a', 'ab', 'b'] as const).map((t) => {
+              const COLOR: Record<string, string> = { a: '#ff6b35', ab: '#ffffff', b: '#e8aa14' };
+              const active = karaokeTrack === t;
+              return (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.trackBtn, active && { borderColor: COLOR[t] }]}
+                  onPress={() => onKaraokeTrack?.(t)}
+                >
+                  <Text style={[styles.trackBtnTxt, active && { color: COLOR[t] }]}>
+                    {t === 'ab' ? 'A+B' : t.toUpperCase()}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         </>
       )}
     </View>}
@@ -337,5 +361,26 @@ const styles = StyleSheet.create({
   },
   karaokeToggleIcon: {
     fontSize: 18,
+  },
+  trackToggle: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  trackBtn: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#2a2a4a',
+    backgroundColor: '#16213e',
+  },
+  trackBtnTxt: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#3a4060',
+    letterSpacing: 0.5,
   },
 });
