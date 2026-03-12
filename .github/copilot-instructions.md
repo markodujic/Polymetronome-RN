@@ -31,6 +31,7 @@ Zielplattform: primär **Android** (nativ), Web als Preview.
 | `AUDIO_ENGINE.md` | AudioEngine-Internals, Scheduling-Logik |
 | `CHANGELOG.md` | Was wann geändert wurde |
 | `TODO.md` | Offene Features + bekannte Bugs |
+| `RESPONSIVE_LAYOUT.md` | Proportionales No-Scroll-Layout: flex-Verhältnisse, scale-Formel, responsive Breakpoints |
 | `/memories/repo/android-emulation-setup.md` | Build-Befehle für Android-Emulator |
 
 ## Code-Konventionen

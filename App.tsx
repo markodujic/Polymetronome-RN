@@ -83,6 +83,11 @@ export default function App() {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
 
+  // Responsive scale: 1.0 at 780px+, shrinks on smaller screens
+  const scale = Math.min(1, height / 780);
+  const compact = scale < 0.85;
+  const playBtnSize = Math.max(48, Math.round(68 * scale));
+
   const [focusedTrack, setFocusedTrack] = useState<'A' | 'B'>('A');
   const [viewMode, setViewMode] = useState<'raster' | 'circle'>('raster');
   const [karaokeOn, setKaraokeOn] = useState(true);
@@ -161,13 +166,14 @@ export default function App() {
 
   const beatIntervalSec = 60 / bpm;
   const pulseActive = isPlaying && volumePulse > 0 && volumeA > 0;
+  const karaokeBarH = (viewMode === 'raster' && karaokeOn) ? Math.max(36, Math.round(64 * scale)) : 0;
 
   const controlsSection = (
     <>
       {/* Header row: BPM | Logo */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, scale < 1 && { paddingTop: Math.max(4, Math.round(12 * scale)), paddingBottom: Math.max(2, Math.round(4 * scale)) }]}>
         <View style={styles.bpmDisplay}>
-          <Text style={styles.bpmValue}>{bpm}</Text>
+          <Text style={[styles.bpmValue, scale < 1 && { fontSize: Math.max(28, Math.round(44 * scale)) }]}>{bpm}</Text>
           <Text style={styles.bpmUnit}>BPM</Text>
         </View>
         <Text style={styles.appTitle}>
@@ -178,12 +184,15 @@ export default function App() {
 
       {/* BPM Slider row */}
       <View style={styles.bpmControls}>
-        <TouchableOpacity style={styles.bpmStepBtn} onPress={() => applyBpm(bpm - 1)}>
+        <TouchableOpacity
+          style={[styles.bpmStepBtn, scale < 1 && { width: Math.max(28, Math.round(36 * scale)), height: Math.max(28, Math.round(36 * scale)) }]}
+          onPress={() => applyBpm(bpm - 1)}
+        >
           <Text style={styles.stepTxt}>−</Text>
         </TouchableOpacity>
         <GlowSlider
           wrapperStyle={styles.bpmSlider}
-          sliderHeight={40}
+          sliderHeight={Math.max(28, Math.round(40 * scale))}
           minimumValue={20}
           maximumValue={300}
           value={bpm}
@@ -192,14 +201,17 @@ export default function App() {
           minimumTrackTintColor="#ff6b35"
           maximumTrackTintColor="#2a3a4a"
         />
-        <TouchableOpacity style={styles.bpmStepBtn} onPress={() => applyBpm(bpm + 1)}>
+        <TouchableOpacity
+          style={[styles.bpmStepBtn, scale < 1 && { width: Math.max(28, Math.round(36 * scale)), height: Math.max(28, Math.round(36 * scale)) }]}
+          onPress={() => applyBpm(bpm + 1)}
+        >
           <Text style={styles.stepTxt}>+</Text>
         </TouchableOpacity>
       </View>
 
       {/* Preset canvas */}
       <View style={styles.presetRow}>
-        <View style={styles.presetCanvas}>
+        <View style={[styles.presetCanvas, scale < 1 && { paddingVertical: Math.max(4, Math.round(8 * scale)) }]}>
           {presets.map((p, i) => (
             <Animated.View
               key={i}
@@ -250,15 +262,15 @@ export default function App() {
       {/* Tracks */}
       <RhythmTrack label="A" track={trackA} isMaster isSelected={focusedTrack === 'A'}
         volume={volumeA} onSelect={() => setFocusedTrack('A')}
-        onBeats={setBeatsA} onVolume={setVolA} onMute={muteA} />
+        onBeats={setBeatsA} onVolume={setVolA} onMute={muteA} compact={compact} />
       <RhythmTrack label="B" track={trackB} isMaster={false} isSelected={focusedTrack === 'B'}
         volume={volumeB} onSelect={() => setFocusedTrack('B')}
-        onBeats={setBeatsB} onVolume={setVolB} onMute={muteB} />
+        onBeats={setBeatsB} onVolume={setVolB} onMute={muteB} compact={compact} />
 
       {/* View toggle */}
       <View style={styles.viewToggle}>
         <TouchableOpacity
-          style={[styles.viewBtn, viewMode === 'raster' && styles.viewBtnActive]}
+          style={[styles.viewBtn, viewMode === 'raster' && styles.viewBtnActive, scale < 1 && { paddingVertical: Math.max(4, Math.round(10 * scale)) }]}
           onPress={() => setViewMode('raster')}
         >
           <Text style={[styles.viewBtnTxt, viewMode === 'raster' && styles.viewBtnTxtActive]}>
@@ -266,7 +278,7 @@ export default function App() {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.viewBtn, viewMode === 'circle' && styles.viewBtnActive]}
+          style={[styles.viewBtn, viewMode === 'circle' && styles.viewBtnActive, scale < 1 && { paddingVertical: Math.max(4, Math.round(10 * scale)) }]}
           onPress={() => setViewMode('circle')}
         >
           <Text style={[styles.viewBtnTxt, viewMode === 'circle' && styles.viewBtnTxtActive]}>
@@ -276,13 +288,14 @@ export default function App() {
       </View>
 
       {/* Micro / Pulse / Frequency sliders – single horizontal row */}
-      <View style={styles.sliderGroup}>
+      <View style={[styles.sliderGroup, scale < 1 && { paddingVertical: Math.max(2, Math.round(6 * scale)) }]}>
         <CompactSlider
           label="MICRO"
           muted={volumeMicro === 0}
           onMute={muteMicro}
           value={volumeMicro}
           onValueChange={(v) => changeVolume('micro', v)}
+          sliderHeight={Math.max(22, Math.round(32 * scale))}
         />
         <CompactSlider
           label="PULSE"
@@ -290,6 +303,7 @@ export default function App() {
           onMute={mutePulse}
           value={volumePulse}
           onValueChange={(v) => changeVolume('pulse', v)}
+          sliderHeight={Math.max(22, Math.round(32 * scale))}
         />
         <CompactSlider
           label={`${pulseFreq} HZ`}
@@ -297,6 +311,7 @@ export default function App() {
           onMute={() => {}}
           value={pulseFreq / 5000}
           onValueChange={(v) => setPulseFreq(Math.round(v * 5000 / 10) * 10 || 50)}
+          sliderHeight={Math.max(22, Math.round(32 * scale))}
         />
       </View>
     </>
@@ -325,19 +340,11 @@ export default function App() {
           karaokeOn={karaokeOn}
         />
       )}
-      {viewMode === 'raster' && (
-        <KaraokeBar
-          trackA={trackA} trackB={trackB}
-          activeBeatA={activeBeatA} activeBeatB={activeBeatB}
-          isPlaying={isPlaying} karaokeOn={karaokeOn}
-          customPhrases={customPhrases}
-        />
-      )}
     </View>
   );
 
   const playButton = (
-    <View style={styles.playBtnBar}>
+    <View style={[styles.playBtnBar, scale < 1 && { paddingVertical: Math.max(6, Math.round(12 * scale)) }]}>
       <TouchableOpacity
         style={styles.karaokeToggleBtn}
         onPress={() => setKaraokeOn(v => !v)}
@@ -346,7 +353,12 @@ export default function App() {
         <Text style={[styles.karaokeToggleIcon, karaokeOn && styles.karaokeToggleIconOn]}>💬</Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={[styles.playBtn, isPlaying && styles.playBtnActive, isLandscape && styles.playBtnLandscape]}
+        style={[
+          styles.playBtn,
+          isPlaying && styles.playBtnActive,
+          isLandscape && styles.playBtnLandscape,
+          !isLandscape && scale < 1 && { width: playBtnSize, height: playBtnSize, borderRadius: playBtnSize / 2 },
+        ]}
         onPress={handleToggle}
         accessibilityLabel={isPlaying ? 'Stop' : 'Play'}
         accessibilityRole="button"
@@ -380,13 +392,19 @@ export default function App() {
           </View>
         </View>
       ) : (
-        // Portrait: controls scroll, canvas stretches, play button fixed at bottom
+        // Portrait: no-scroll, canvas takes remaining space, karaoke bar separate
         <View style={styles.portraitContainer}>
-          <ScrollView style={styles.portraitScroll} contentContainerStyle={styles.portraitContent}>
-            {controlsSection}
-          </ScrollView>
+          {controlsSection}
           <View style={styles.canvasWrapper}>
             {canvasSection}
+          </View>
+          <View style={{ height: karaokeBarH, overflow: 'hidden' }}>
+            <KaraokeBar
+              trackA={trackA} trackB={trackB}
+              activeBeatA={activeBeatA} activeBeatB={activeBeatB}
+              isPlaying={isPlaying} karaokeOn={karaokeOn}
+              customPhrases={customPhrases}
+            />
           </View>
           {playButton}
         </View>
@@ -411,13 +429,14 @@ export default function App() {
 
 // Compact horizontal slider (label on top, slider below)
 function CompactSlider({
-  label, muted, onMute, value, onValueChange,
+  label, muted, onMute, value, onValueChange, sliderHeight = 32,
 }: {
   label: string;
   muted: boolean;
   onMute: () => void;
   value: number;
   onValueChange: (v: number) => void;
+  sliderHeight?: number;
 }) {
   return (
     <View style={styles.compactSliderCol}>
@@ -427,7 +446,7 @@ function CompactSlider({
         </Text>
       </TouchableOpacity>
       <GlowSlider
-        sliderHeight={32}
+        sliderHeight={sliderHeight}
         muted={muted}
         value={value}
         onValueChange={onValueChange}
