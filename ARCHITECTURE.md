@@ -12,10 +12,11 @@ useMetronome (hook)
               ├── PresetCanvas (8 one-tap polyrhythm presets)
               ├── RhythmTrack (A – master, compact single row)
               ├── RhythmTrack (B – derived, compact single row)
-              ├── PolyCanvas (Mikroraster)
-              ├── CircleViz (Circle Visualizer)
+              ├── PolyCanvas      (viewMode === 'polygrid')
+              ├── CircleViz       (viewMode === 'circle')
               │     └── useKaraokeSyllable (shared hook)
-              ├── KaraokeBar (Raster view karaoke bar)
+              ├── StepView        (viewMode === 'step')
+              ├── KaraokeBar (Polygrid/Step view karaoke bar)
               │     └── useKaraokeSyllable (shared hook)
               └── PlayBtnBar
                     ├── 💬 KaraokeToggle (absolute left)
@@ -61,11 +62,13 @@ Root component. Holds `focusedTrack: 'A' | 'B'`, `viewMode`, `karaokeOn` state.
 | Value | Type | Description |
 |---|---|---|
 | `focusedTrack` | `'A' \| 'B'` | Which track is visually enlarged |
-| `viewMode` | `'raster' \| 'circle'` | Toggle between Mikroraster and Circle view |
+| `viewMode` | `'polygrid' \| 'circle' \| 'step'` | Active view: Mikroraster, Circle oder Step Sequencer |
 | `karaokeOn` | `boolean` | Whether karaoke syllable display is active |
 | `isSaveMode` | `boolean` | When true, clicking a preset slot saves current state there |
 | `savedSlotIdx` | `number \| null` | Index of last saved slot (drives glow animation) |
 | `savedGlowAnim` | `Animated.Value` | 1→0 fade-out over 900 ms; drives yellow glow on saved preset button |
+| `stepPatternA` | `TrackStepPattern` | Step-Sequencer-Pattern für Track A (Baum-Struktur) |
+| `stepPatternB` | `TrackStepPattern` | Step-Sequencer-Pattern für Track B (Baum-Struktur) |
 
 ---
 
@@ -134,6 +137,23 @@ SVG-based polyrhythm visualizer with two concentric annular rings (Track A outer
 When `karaokeOn` is true, displays the active karaoke syllable as an absolutely-positioned React Native `Text` overlay in the center of the SVG container (not `SvgText`). This ensures identical font rendering to `KaraokeBar`. The same scale 1.25→1 + `#7dd3fc` glow pulse animation fires on each beat. A transparent `Pressable` overlay handles phrase-cycle taps (replacing `onPress` on `<G>` which leaked Responder event props to the DOM on web).
 
 Props: `trackA`, `trackB`, `activeBeatA`, `activeBeatB`, `isPlaying`, `beatIntervalSec`, `microAccents`, `karaokeOn?`
+
+---
+
+### `StepView`
+Step-Sequencer UI (`src/components/StepView.tsx`). Zeigt zwei Reihen (Track A oben, Track B unten), je ein `StepNode`-Baum pro Beat.
+
+**Interaktion:**
+- Kurz tippen auf Blattknoten → `active` Toggle (an/aus)
+- Lang drücken auf Blattknoten → `SubdivPicker` öffnet (÷2 / ÷3 / ↩ Aufheben)
+- Subdivision bis Tiefe 3 möglich; Collapse bringt den übergeordneten Knoten zurück zum Blatt
+- Reset-Button (oben rechts) → beide Patterns auf `makeDefaultPattern(beats)` zurückgesetzt
+
+**SubdivPicker:** Zeigt ÷2/÷3 nur wenn `depth < 3`; zeigt „↩ Aufheben" nur wenn `depth > 0`.
+
+**Kein Design/Play-Toggle** — StepView ist immer editierbar.
+
+Props: `patternA`, `patternB`, `beatsA`, `beatsB`, `activeBeatA`, `activeBeatB`, `isPlaying`, `onChangeA`, `onChangeB`, `onReset`
 
 ---
 
@@ -211,14 +231,16 @@ interface Preset {
   bpm: number;
   beatsA: number;
   beatsB: number;
-  beatLevels: number[];    // Track B per-beat volume: 1.0 | 0.5 | 0.0
-  accentsA: boolean[];     // Track A accent pattern
-  accentsB: boolean[];     // Track B accent pattern (added v1.6.1)
+  beatLevels: number[];           // Track B per-beat volume: 1.0 | 0.5 | 0.0
+  accentsA: boolean[];            // Track A accent pattern
+  accentsB: boolean[];            // Track B accent pattern (added v1.6.1)
   microAccents: boolean[];
   soundA: ClickSound;
   soundB: ClickSound;
   volumeA: number;
   volumeB: number;
+  stepPatternA?: TrackStepPattern; // Step-Sequencer-Pattern A (nur wenn im Step-Modus gespeichert)
+  stepPatternB?: TrackStepPattern; // Step-Sequencer-Pattern B (nur wenn im Step-Modus gespeichert)
 }
 ```
 

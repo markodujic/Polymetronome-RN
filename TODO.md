@@ -35,6 +35,15 @@
 
 ---
 
+## Recently Fixed (1.9.0)
+
+- [x] **Step-Sequencer vollständig implementiert** – viewMode `'step'`, StepView.tsx, StepPattern-Typen, AudioEngine Step-Scheduler
+- [x] **Rekursive Subdivision bis Tiefe 3** – SubdivPicker mit Depth-Tracking; ÷2/÷3 nur bei depth < 3; ↩ Aufheben bei depth > 0
+- [x] **Step-Scheduler Doppel-Scheduling** – Tag-Cache ersetzt durch Cursor-Ansatz (stepCursorA/B)
+- [x] **Design/Play-Toggle entfernt** – StepView immer editierbar; Reset-Button stattdessen
+- [x] **Step-Patterns in Presets** – `stepPatternA/B` werden beim Speichern im Step-Modus übernommen und beim Laden wiederhergestellt
+- [x] **Chrome Context-Menu bei Long-Press** – `onContextMenu: e.preventDefault()` auf NodeCell (Web only)
+
 ## Recently Fixed (1.8.0)
 
 - [x] **Preset save-mode zeigt Zahlen** – PresetMiniGrid bleibt immer sichtbar, Save-Mode nur durch gelben Glow-Rand signalisiert

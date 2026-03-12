@@ -122,6 +122,7 @@ export default function App() {
       volumeA,
       volumeB,
       karaokeTrack,
+      ...(viewMode === 'step' ? { stepPatternA, stepPatternB } : {}),
     });
     setIsSaveMode(false);
     try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
@@ -132,7 +133,7 @@ export default function App() {
       duration: 900,
       useNativeDriver: false,
     }).start(() => setSavedSlotIdx(null));
-  }, [bpm, trackA, trackB, microAccents, volumeA, volumeB, savePreset, savedGlowAnim]);
+  }, [bpm, trackA, trackB, microAccents, volumeA, volumeB, savePreset, savedGlowAnim, viewMode, stepPatternA, stepPatternB]);
 
   // Mute toggle refs
   const prevVolARef = useRef(0.8);
@@ -260,7 +261,16 @@ export default function App() {
                   isSaveMode && styles.presetBtnSaveMode,
                   pressed && styles.presetBtnPressed,
                 ]}
-                onPress={() => isSaveMode ? handleSaveToSlot(i) : (loadPreset(p), setKaraokeTrack(p.karaokeTrack ?? 'ab'))}
+                onPress={() => {
+                  if (isSaveMode) {
+                    handleSaveToSlot(i);
+                  } else {
+                    loadPreset(p);
+                    setKaraokeTrack(p.karaokeTrack ?? 'ab');
+                    if (p.stepPatternA) setStepPatternA(p.stepPatternA);
+                    if (p.stepPatternB) setStepPatternB(p.stepPatternB);
+                  }
+                }}
                 accessibilityLabel={isSaveMode ? `In Slot ${i + 1} speichern` : p.label}
               >
                 <PresetMiniGrid
@@ -389,6 +399,10 @@ export default function App() {
           isPlaying={isPlaying}
           beatsA={trackA.beats}
           beatsB={trackB.beats}
+          onReset={() => {
+            setStepPatternA(makeDefaultPattern(trackA.beats));
+            setStepPatternB(makeDefaultPattern(trackB.beats));
+          }}
         />
       )}
     </View>

@@ -114,6 +114,63 @@ Stops playback and closes the `AudioContext`.
 
 ---
 
+## Step-Scheduler (Step-Modus)
+
+Wenn `viewMode === 'step'` aktiv ist, ersetzt der Step-Scheduler den LCM-Grid-Scheduler vollständig.
+
+### Warum ein separater Scheduler?
+
+Der LCM-Grid-Scheduler rechnet mit ganzzahligen Gitterpositionen. Triolen erzeugen
+irrationale Zeitpositionen (z.B. `1/3` eines Beats), die nicht auf das LCM-Grid passen.
+Der Step-Scheduler arbeitet mit Fraktionen (0–1) pro Beat und ist unabhängig vom LCM.
+
+### Cursor-Ansatz
+
+Statt eines Tag-Caches (`Set<string>`) verwendet der Step-Scheduler einen monoton wachsenden Zeiger
+(`stepCursorA`, `stepCursorB`) auf eine vorsortierte Flat-Liste aller Ereignisse innerhalb einer Wiedergabe-Zyklusrunde.
+
+```
+recomputeStepFlat():
+  stepFlatA = flattenPattern(patternA) → [{frac, beatIdx}, …] sortiert nach frac
+  stepFlatB = flattenPattern(patternB) → [{frac, beatIdx}, …] sortiert nach frac
+
+stepScheduler() (läuft parallel zum LCM-Scheduler, 25 ms Polling):
+  für track A und B:
+    while stepCursor < stepFlat.length:
+      frac = beatIdx + offset   (absolute Position im Zyklus, 0 … beatsA-1+1)
+      t = epoch + cycle * cycleDur + frac * beatDurA
+      wenn t > now + SCHEDULE_AHEAD_TIME → break
+      wenn t >= now → scheduleSound(t); fireBeat(...)
+      cursor++
+    wenn cursor >= length → cursor auf 0 zurücksetzen, cycle++
+```
+
+**Vorteil:** Jedes Ereignis wird genau einmal geplant. Kein Cache-Reset → kein Doppel-Scheduling.
+
+### Neue Felder (AudioEngine)
+
+| Feld | Typ | Beschreibung |
+|---|---|---|
+| `stepFlatA` | `{frac: number; beatIdx: number}[]` | Vorsortierte Ereignisliste Track A |
+| `stepFlatB` | `{frac: number; beatIdx: number}[]` | Vorsortierte Ereignisliste Track B |
+| `stepCursorA` | `number` | Aktueller Zeiger in stepFlatA |
+| `stepCursorB` | `number` | Aktueller Zeiger in stepFlatB |
+
+### `audioEngine.setStepEvents(trackId: 1 | 2, events: number[][]): void`
+
+Setzt die Step-Ereignisse für einen Track. Wird von App.tsx aufgerufen wenn sich das `StepPattern` ändert oder die Wiedergabe startet.
+
+- `events[beatIndex]` = Array von Offsets (0–1) innerhalb dieses Beats
+- Beispiel: `[[0], [0, 0.5], [0, 0.333, 0.666]]` → Beat 0 = ganzer Schlag, Beat 1 = zwei 8tel, Beat 2 = Triole
+- Ruft intern `recomputeStepFlat()` auf und setzt `stepCursorA/B` zurück
+
+```ts
+audioEngine.setStepEvents(1, [[0], [0, 0.5], [0, 0.333, 0.667]]);
+audioEngine.setStepEvents(2, [[0, 0.25, 0.5, 0.75]]);
+```
+
+---
+
 ## Sound Synthesis
 
 All sounds are synthesized at init-time into `AudioBuffer` objects.

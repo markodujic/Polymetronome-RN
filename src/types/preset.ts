@@ -1,4 +1,5 @@
 import type { ClickSound } from '../audio/AudioEngine';
+import type { TrackStepPattern } from './stepPattern';
 
 export interface Preset {
   label: string;
@@ -14,4 +15,6 @@ export interface Preset {
   volumeA: number;
   volumeB: number;
   karaokeTrack?: 'a' | 'b' | 'ab';
+  stepPatternA?: TrackStepPattern;
+  stepPatternB?: TrackStepPattern;
 }

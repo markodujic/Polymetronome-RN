@@ -35,29 +35,45 @@ export interface StepViewProps {
   isPlaying: boolean;
   beatsA: number;
   beatsB: number;
+  onReset: () => void;
 }
 
 // ─── Subdivision Picker Modal ─────────────────────────────────────────────────
 
 interface SubdivPickerProps {
+  depth: number;
   onChoose: (sub: 2 | 3) => void;
+  onCollapse?: () => void;
   onClose: () => void;
 }
 
-function SubdivPicker({ onChoose, onClose }: SubdivPickerProps) {
+function SubdivPicker({ depth, onChoose, onCollapse, onClose }: SubdivPickerProps) {
+  const canSubdivide = depth < 3;
   return (
     <Modal transparent animationType="fade">
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <View style={styles.pickerBox}>
-          <Text style={styles.pickerTitle}>Unterteilen</Text>
-          <View style={styles.pickerRow}>
-            <TouchableOpacity style={styles.pickerBtn} onPress={() => onChoose(2)}>
-              <Text style={styles.pickerBtnTxt}>÷ 2</Text>
+          {canSubdivide && (
+            <>
+              <Text style={styles.pickerTitle}>Unterteilen</Text>
+              <View style={styles.pickerRow}>
+                <TouchableOpacity style={styles.pickerBtn} onPress={() => onChoose(2)}>
+                  <Text style={styles.pickerBtnTxt}>÷ 2</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.pickerBtn} onPress={() => onChoose(3)}>
+                  <Text style={styles.pickerBtnTxt}>÷ 3</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+          {onCollapse && (
+            <TouchableOpacity
+              style={[styles.pickerBtn, styles.pickerBtnCollapse]}
+              onPress={onCollapse}
+            >
+              <Text style={styles.pickerBtnCollapseTxt}>↩ Aufheben</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.pickerBtn} onPress={() => onChoose(3)}>
-              <Text style={styles.pickerBtnTxt}>÷ 3</Text>
-            </TouchableOpacity>
-          </View>
+          )}
           <TouchableOpacity style={styles.pickerCancel} onPress={onClose}>
             <Text style={styles.pickerCancelTxt}>Abbrechen</Text>
           </TouchableOpacity>
@@ -131,10 +147,11 @@ const NodeCell = memo(function NodeCell({
           borderColor: trackColor + '55',
         },
       ]}
-      onPress={isDesign ? () => onToggle(fullPath) : undefined}
-      onLongPress={isDesign ? () => onLongAction(fullPath, depth) : undefined}
+      onPress={() => onToggle(fullPath)}
+      onLongPress={() => onLongAction(fullPath, depth)}
       delayLongPress={450}
-      activeOpacity={isDesign ? 0.6 : 1}
+      activeOpacity={0.6}
+      {...(Platform.OS === 'web' ? { onContextMenu: (e: any) => e.preventDefault() } : {})}
     />
   );
 });
@@ -151,9 +168,9 @@ export function StepView({
   isPlaying,
   beatsA,
   beatsB,
+  onReset,
 }: StepViewProps) {
-  const [isDesign, setIsDesign] = useState(true);
-  const [picker, setPicker] = useState<{ path: number[]; trackId: 1 | 2 } | null>(null);
+  const [picker, setPicker] = useState<{ path: number[]; trackId: 1 | 2; depth: number } | null>(null);
 
   // ── Flash animation maps (stable ref objects) ────────────────────────────
   const flashA = useRef<{ [k: number]: Animated.Value }>({});
@@ -207,27 +224,13 @@ export function StepView({
   );
 
   const longA = useCallback(
-    (path: number[], depth: number) => {
-      if (depth === 0) {
-        setPicker({ path, trackId: 1 });
-      } else {
-        const parentPath = path.slice(0, -1);
-        onPatternA({ nodes: updateNode(patternA.nodes, parentPath, collapseNode) });
-      }
-    },
-    [patternA, onPatternA],
+    (path: number[], depth: number) => setPicker({ path, trackId: 1, depth }),
+    [],
   );
 
   const longB = useCallback(
-    (path: number[], depth: number) => {
-      if (depth === 0) {
-        setPicker({ path, trackId: 2 });
-      } else {
-        const parentPath = path.slice(0, -1);
-        onPatternB({ nodes: updateNode(patternB.nodes, parentPath, collapseNode) });
-      }
-    },
-    [patternB, onPatternB],
+    (path: number[], depth: number) => setPicker({ path, trackId: 2, depth }),
+    [],
   );
 
   const handleSubdivChoose = useCallback(
@@ -243,6 +246,18 @@ export function StepView({
     },
     [picker, patternA, patternB, onPatternA, onPatternB],
   );
+
+  const handleSubdivCollapse = useCallback(() => {
+    if (!picker) return;
+    const { path, trackId } = picker;
+    const parentPath = path.slice(0, -1);
+    if (trackId === 1) {
+      onPatternA({ nodes: updateNode(patternA.nodes, parentPath, collapseNode) });
+    } else {
+      onPatternB({ nodes: updateNode(patternB.nodes, parentPath, collapseNode) });
+    }
+    setPicker(null);
+  }, [picker, patternA, patternB, onPatternA, onPatternB]);
 
   // ── Track row renderer ────────────────────────────────────────────────────
 
@@ -274,7 +289,7 @@ export function StepView({
               fullPath={[beatIdx]}
               depth={0}
               trackColor={color}
-              isDesign={isDesign}
+              isDesign={true}
               onToggle={onTog}
               onLongAction={onLng}
             />
@@ -288,23 +303,10 @@ export function StepView({
 
   return (
     <View style={styles.container}>
-      {/* Design / Play toggle */}
+      {/* Reset button */}
       <View style={styles.modeBar}>
-        <TouchableOpacity
-          style={[styles.modeBtn, isDesign && styles.modeBtnDesignActive]}
-          onPress={() => setIsDesign(true)}
-        >
-          <Text style={[styles.modeBtnTxt, isDesign && styles.modeBtnTxtActive]}>
-            ✎ Design
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.modeBtn, !isDesign && styles.modeBtnPlayActive]}
-          onPress={() => setIsDesign(false)}
-        >
-          <Text style={[styles.modeBtnTxt, !isDesign && styles.modeBtnTxtActive]}>
-            ▶ Play
-          </Text>
+        <TouchableOpacity style={styles.resetBtn} onPress={onReset}>
+          <Text style={styles.resetBtnTxt}>↺ Reset</Text>
         </TouchableOpacity>
       </View>
 
@@ -317,7 +319,12 @@ export function StepView({
 
       {/* Subdivision picker */}
       {picker && (
-        <SubdivPicker onChoose={handleSubdivChoose} onClose={() => setPicker(null)} />
+        <SubdivPicker
+          depth={picker.depth}
+          onChoose={handleSubdivChoose}
+          onCollapse={picker.depth > 0 ? handleSubdivCollapse : undefined}
+          onClose={() => setPicker(null)}
+        />
       )}
     </View>
   );
@@ -339,29 +346,18 @@ const styles = StyleSheet.create({
     gap: 6,
     marginBottom: 10,
   },
-  modeBtn: {
+  resetBtn: {
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#444',
+    borderColor: '#555',
     backgroundColor: '#222',
   },
-  modeBtnDesignActive: {
-    backgroundColor: '#ff6b35',
-    borderColor: '#ff6b35',
-  },
-  modeBtnPlayActive: {
-    backgroundColor: '#2a5a2a',
-    borderColor: '#4a9a4a',
-  },
-  modeBtnTxt: {
-    color: '#888',
+  resetBtnTxt: {
+    color: '#aaa',
     fontSize: 13,
     fontWeight: '600',
-  },
-  modeBtnTxtActive: {
-    color: '#fff',
   },
 
   // Track rows
@@ -467,5 +463,17 @@ const styles = StyleSheet.create({
   pickerCancelTxt: {
     color: '#777',
     fontSize: 13,
+  },
+  pickerBtnCollapse: {
+    width: '100%',
+    marginTop: 8,
+    backgroundColor: '#3a2a2a',
+    borderColor: '#7a4040',
+  },
+  pickerBtnCollapseTxt: {
+    color: '#e08080',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });

@@ -85,6 +85,11 @@ class AudioEngine {
   /* ---- step-sequencer mode ---- */
   private stepEventsA: number[][] | null = null; // events[beatIndex] = offsets 0-1
   private stepEventsB: number[][] | null = null;
+  // Flat sorted event lists: frac = absolute offset within one cycle
+  private stepFlatA: { frac: number; beatIdx: number }[] = [];
+  private stepFlatB: { frac: number; beatIdx: number }[] = [];
+  private stepCursorA = 0; // next event index (advances monotonically)
+  private stepCursorB = 0;
 
   /* ---- track config ---- */
   private soundA: ClickSound = 'sine-high';
@@ -182,8 +187,8 @@ class AudioEngine {
       try { osc.stop(); } catch { /* already stopped */ }
     }
     this.activePulseOscs = [];
-    this.scheduledStepTimes.clear();
-    this._stepCacheCutoff = 0;
+    this.stepCursorA = 0;
+    this.stepCursorB = 0;
   }
 
   /** Live BPM change – scales remaining time proportionally. */
@@ -234,9 +239,8 @@ class AudioEngine {
     if (trackId === 1) this.stepEventsA = events;
     else               this.stepEventsB = events;
 
-    // Always clear the schedule cache so the new pattern takes effect immediately.
-    this.scheduledStepTimes.clear();
-    this._stepCacheCutoff = 0;
+    // Rebuild flat list and resync cursor.
+    this.recomputeStepFlat();
 
     if (this._isPlaying && this.ctx) {
       const bothSet = this.stepEventsA !== null && this.stepEventsB !== null;
@@ -246,6 +250,8 @@ class AudioEngine {
         const now = this.ctx.currentTime + 0.05;
         this.epoch = now;
         this.cellsFromEpoch = 0;
+        this.stepCursorA = 0;
+        this.stepCursorB = 0;
       }
     }
   }
@@ -296,71 +302,80 @@ class AudioEngine {
   };
 
   /**
-   * Step-Scheduler: ersetzt den LCM-Scheduler wenn Step-Modus aktiv ist.
-   * Läuft Beat-basiert statt Gitter-basiert; unterstützt Triolen-Offsets.
+   * Step-Scheduler: Cursor-basiert (analog zu cellsFromEpoch im LCM-Scheduler).
+   * Jedes Event wird genau einmal eingeplant – keine Doppelplanung möglich.
    */
   private stepScheduler = (): void => {
-    if (!this.ctx || !this.stepEventsA || !this.stepEventsB) return;
-    const now = this.ctx.currentTime;
-    const beatDurationA = (60 / this.masterBpm);          // 4tel-Dauer in Sekunden
-    const beatDurationB = beatDurationA * this.beatsA / this.beatsB;
+    if (!this.ctx) return;
+    if (this.stepFlatA.length === 0 || this.stepFlatB.length === 0) return;
 
-    // SCHEDULE_AHEAD_TIME nach vorne schauen
+    const now     = this.ctx.currentTime;
     const horizon = now + SCHEDULE_AHEAD_TIME;
+    const beatDurA = 60 / this.masterBpm;
+    const beatDurB = beatDurA * this.beatsA / this.beatsB;
+    const cycleDur = this.beatsA * beatDurA; // same for both tracks
 
-    // Maximale Beats die im Fenster liegen könnten
-    const maxBeatsA = Math.ceil((horizon - this.epoch) / beatDurationA) + 1;
-    const maxBeatsB = Math.ceil((horizon - this.epoch) / beatDurationB) + 1;
-
-    // Track A
-    for (let beat = 0; beat < maxBeatsA; beat++) {
-      const eventsForBeat = this.stepEventsA[beat % this.beatsA] ?? [0];
-      for (const offset of eventsForBeat) {
-        const t = this.epoch + (beat + offset) * beatDurationA;
-        if (t < now - 0.001) continue;    // bereits vergangen
-        if (t >= horizon) break;
-        const tag = `a_${beat}_${offset}`;
-        if (this.scheduledStepTimes.has(tag)) continue;
-        this.scheduledStepTimes.add(tag);
-        const accent = this.accentsA[beat % this.accentsA.length];
+    // ── Track A ──────────────────────────────────────────────────
+    while (true) {
+      const cycle = Math.floor(this.stepCursorA / this.stepFlatA.length);
+      const idx   = this.stepCursorA % this.stepFlatA.length;
+      const ev    = this.stepFlatA[idx];
+      const t     = this.epoch + cycle * cycleDur + ev.frac * beatDurA;
+      if (t >= horizon) break;
+      if (t >= now - 0.05) {
+        const accent = this.accentsA[ev.beatIdx % this.accentsA.length];
         if (this._volA > 0) this.playSound(this.soundA, accent, this.gainA!, t);
-        this.fireBeat(1, beat % this.beatsA, t);
-        if (this._volPulse > 0 && this._volA > 0 && offset === 0) {
-          this.schedulePulse(t, t + beatDurationA);
+        this.fireBeat(1, ev.beatIdx, t);
+        if (this._volPulse > 0 && this._volA > 0 && ev.frac === ev.beatIdx) {
+          this.schedulePulse(t, t + beatDurA);
         }
       }
+      this.stepCursorA++;
     }
 
-    // Track B
-    for (let beat = 0; beat < maxBeatsB; beat++) {
-      const eventsForBeat = this.stepEventsB[beat % this.beatsB] ?? [0];
-      for (const offset of eventsForBeat) {
-        const t = this.epoch + (beat + offset) * beatDurationB;
-        if (t < now - 0.001) continue;
-        if (t >= horizon) break;
-        const tag = `b_${beat}_${offset}`;
-        if (this.scheduledStepTimes.has(tag)) continue;
-        this.scheduledStepTimes.add(tag);
-        const accent = this.accentsB[beat % this.accentsB.length];
-        const beatLevel = this.beatLevelsB[beat % this.beatLevelsB.length];
+    // ── Track B ──────────────────────────────────────────────────
+    while (true) {
+      const cycle = Math.floor(this.stepCursorB / this.stepFlatB.length);
+      const idx   = this.stepCursorB % this.stepFlatB.length;
+      const ev    = this.stepFlatB[idx];
+      const t     = this.epoch + cycle * cycleDur + ev.frac * beatDurB;
+      if (t >= horizon) break;
+      if (t >= now - 0.05) {
+        const beatLevel = this.beatLevelsB[ev.beatIdx % this.beatLevelsB.length];
+        const accent    = this.accentsB[ev.beatIdx % this.accentsB.length];
         if (this._volB > 0 && beatLevel > 0) {
           this.playSoundAtLevel(this.soundB, accent, this.gainB!, t, beatLevel);
         }
-        if (beatLevel > 0) this.fireBeat(2, beat % this.beatsB, t);
+        if (beatLevel > 0) this.fireBeat(2, ev.beatIdx, t);
       }
-    }
-
-    // Alten Eintrag-Cache beschneiden (nur letzte 2 LCM-Perioden behalten)
-    const period = this.beatsA * this.beatsB * Math.max(beatDurationA, beatDurationB);
-    const cutoff = now - period * 2;
-    if (this._stepCacheCutoff < cutoff) {
-      this._stepCacheCutoff = cutoff;
-      this.scheduledStepTimes.clear();
+      this.stepCursorB++;
     }
   };
 
-  private scheduledStepTimes: Set<string> = new Set();
-  private _stepCacheCutoff = 0;
+  /**
+   * Baut die flachen sortierten Event-Listen für beide Tracks neu auf.
+   * Muss nach jeder Änderung von stepEventsA/B aufgerufen werden.
+   */
+  private recomputeStepFlat(): void {
+    this.stepFlatA = [];
+    if (this.stepEventsA) {
+      for (let i = 0; i < this.stepEventsA.length; i++) {
+        for (const offset of (this.stepEventsA[i] ?? [0])) {
+          this.stepFlatA.push({ frac: i + offset, beatIdx: i });
+        }
+      }
+      this.stepFlatA.sort((a, b) => a.frac - b.frac);
+    }
+    this.stepFlatB = [];
+    if (this.stepEventsB) {
+      for (let i = 0; i < this.stepEventsB.length; i++) {
+        for (const offset of (this.stepEventsB[i] ?? [0])) {
+          this.stepFlatB.push({ frac: i + offset, beatIdx: i });
+        }
+      }
+      this.stepFlatB.sort((a, b) => a.frac - b.frac);
+    }
+  }
 
   /** LCM-Scheduler (originaler Algorithmus). */
   private lcmSchedulerBody = (): void => {

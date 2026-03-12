@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.9.0] – 2026-03-12
+
+### Added
+- **Step Sequencer** (`viewMode = 'step'`) – dritter View-Modus neben Polygrid und Circle. Zwei editierbare Reihen (Track A oben / Track B unten), pro Beat ein `StepNode`-Baum. Tippen = active toggle; lang drücken = Subdivision-Picker (÷2 / ÷3).
+- **Rekursive Subdivision bis Tiefe 3** – jede Subdivisionsebene kann erneut unterteilt werden (4tel → 8tel → 16tel → max). SubdivPicker zeigt ÷2/÷3 nur wenn `depth < 3`; zeigt „↩ Aufheben" wenn `depth > 0` (Collapse auf übergeordneten Knoten).
+- **Reset-Button in StepView** – setzt beide Patterns auf `makeDefaultPattern(beats)` zurück.
+- **Step-Patterns in Preset Save/Load** – beim Speichern im Step-Modus werden `stepPatternA` + `stepPatternB` in den Preset-Slot übernommen. Laden stellt das Pattern wieder her, falls vorhanden.
+
+### Changed
+- **StepView immer editierbar** – Design/Play-Toggle entfernt; Subdivision-Interaktion ist immer aktiv (kein separater Edit-Modus mehr nötig).
+
+### Fixed
+- **Step-Scheduler Doppel-Scheduling** – Tag-Cache (`Set<string>`) wurde periodisch geleert während Ereignisse bereits im AudioContext-Buffer lagen → Doppel-Scheduling. Ersetzt durch Cursor-Ansatz (`stepCursorA/B`): jedes Ereignis wird exakt einmal geplant; Cursor läuft monoton über die vorsortierte Flat-Liste.
+- **Chrome Context-Menu bei Long-Press** – `onContextMenu: e.preventDefault()` auf dem NodeCell-`TouchableOpacity` (Web only) verhindert das Browser-Kontextmenü beim langen Drücken.
+
+---
+
 ## [1.8.0] – 2026-03-11
 
 ### Changed
