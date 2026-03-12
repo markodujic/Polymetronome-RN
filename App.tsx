@@ -19,6 +19,8 @@ import { SettingsSheet } from './src/components/SettingsSheet';
 import { StepView } from './src/components/StepView';
 import { makeDefaultPattern, flattenPattern } from './src/types/stepPattern';
 import type { TrackStepPattern } from './src/types/stepPattern';
+import { useStepPresets } from './src/hooks/useStepPresets';
+import type { StepPreset } from './src/hooks/useStepPresets';
 import { audioEngine } from './src/audio/AudioEngine';
 import type { ClickSound } from './src/audio/AudioEngine';
 
@@ -69,7 +71,53 @@ const pgStyles = StyleSheet.create({
   slotNum: { color: '#5a6080', fontSize: 10, fontWeight: '700' },
   timeline: { position: 'relative', width: '100%', height: 7, marginBottom: 3 },
   dot: { position: 'absolute', top: 0, width: 5, height: 5, borderRadius: 2 },
+  emptyRatio: { color: '#3a4060', fontSize: 13, fontWeight: '700' },
 });
+
+function StepMiniGrid({ patternA, patternB, beatsA, beatsB, slotNum }: {
+  patternA: TrackStepPattern; patternB: TrackStepPattern;
+  beatsA: number; beatsB: number; slotNum: number;
+}) {
+  const posA: number[] = [];
+  flattenPattern(patternA).forEach((offsets, beatIdx) => {
+    offsets.forEach(o => posA.push(((beatIdx + o) / beatsA) * 100));
+  });
+  const posB: number[] = [];
+  flattenPattern(patternB).forEach((offsets, beatIdx) => {
+    offsets.forEach(o => posB.push(((beatIdx + o) / beatsB) * 100));
+  });
+  return (
+    <View style={pgStyles.wrapper}>
+      <View style={pgStyles.header}>
+        <Text style={pgStyles.ratio}>{beatsA}:{beatsB}</Text>
+        <Text style={pgStyles.slotNum}>{slotNum}</Text>
+      </View>
+      <View style={pgStyles.timeline}>
+        {posA.map((pos, i) => (
+          <View key={i} style={[pgStyles.dot, { left: `${pos}%` as any, backgroundColor: '#ff6b35' }]} />
+        ))}
+      </View>
+      <View style={pgStyles.timeline}>
+        {posB.map((pos, i) => (
+          <View key={i} style={[pgStyles.dot, { left: `${pos}%` as any, backgroundColor: '#e8aa14' }]} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function StepMiniEmpty({ slotNum }: { slotNum: number }) {
+  return (
+    <View style={pgStyles.wrapper}>
+      <View style={pgStyles.header}>
+        <Text style={pgStyles.emptyRatio}>—</Text>
+        <Text style={pgStyles.slotNum}>{slotNum}</Text>
+      </View>
+      <View style={pgStyles.timeline} />
+      <View style={pgStyles.timeline} />
+    </View>
+  );
+}
 
 export default function App() {
   const {
@@ -83,6 +131,7 @@ export default function App() {
   } = useMetronome();
 
   const [presets, savePreset] = usePresets();
+  const [stepPresets, saveStepPreset] = useStepPresets();
 
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
@@ -109,21 +158,32 @@ export default function App() {
   }, []);
 
   const handleSaveToSlot = useCallback((i: number) => {
-    savePreset(i, {
-      bpm,
-      beatsA: trackA.beats,
-      beatsB: trackB.beats,
-      beatLevels: trackB.beatLevels,
-      accentsA: trackA.accents,
-      accentsB: trackB.accents,
-      microAccents,
-      soundA: trackA.sound,
-      soundB: trackB.sound,
-      volumeA,
-      volumeB,
-      karaokeTrack,
-      ...(viewMode === 'step' ? { stepPatternA, stepPatternB } : {}),
-    });
+    if (viewMode === 'step') {
+      const label = `${trackA.beats}:${trackB.beats} @ ${bpm}`;
+      saveStepPreset(i, {
+        label,
+        bpm,
+        beatsA: trackA.beats,
+        beatsB: trackB.beats,
+        patternA: stepPatternA,
+        patternB: stepPatternB,
+      });
+    } else {
+      savePreset(i, {
+        bpm,
+        beatsA: trackA.beats,
+        beatsB: trackB.beats,
+        beatLevels: trackB.beatLevels,
+        accentsA: trackA.accents,
+        accentsB: trackB.accents,
+        microAccents,
+        soundA: trackA.sound,
+        soundB: trackB.sound,
+        volumeA,
+        volumeB,
+        karaokeTrack,
+      });
+    }
     setIsSaveMode(false);
     try { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); } catch {}
     setSavedSlotIdx(i);
@@ -133,7 +193,7 @@ export default function App() {
       duration: 900,
       useNativeDriver: false,
     }).start(() => setSavedSlotIdx(null));
-  }, [bpm, trackA, trackB, microAccents, volumeA, volumeB, savePreset, savedGlowAnim, viewMode, stepPatternA, stepPatternB]);
+  }, [bpm, trackA, trackB, microAccents, volumeA, volumeB, savePreset, saveStepPreset, savedGlowAnim, viewMode, stepPatternA, stepPatternB, karaokeTrack]);
 
   // Mute toggle refs
   const prevVolARef = useRef(0.8);
@@ -194,7 +254,7 @@ export default function App() {
 
   const beatIntervalSec = 60 / bpm;
   const pulseActive = isPlaying && volumePulse > 0 && volumeA > 0;
-  const karaokeBarH = ((viewMode === 'polygrid' || viewMode === 'step') && karaokeOn)
+  const karaokeBarH = (viewMode === 'polygrid' && karaokeOn)
     ? Math.max(36, Math.round(64 * scale)) : 0;
 
   const controlsSection = (
@@ -241,7 +301,53 @@ export default function App() {
       {/* Preset canvas */}
       <View style={styles.presetRow}>
         <View style={[styles.presetCanvas, scale < 1 && { paddingVertical: Math.max(4, Math.round(8 * scale)) }]}>
-          {presets.map((p, i) => (
+          {viewMode === 'step' ? stepPresets.map((sp, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                styles.presetBtnWrapper,
+                savedSlotIdx === i && Platform.OS !== 'web' && {
+                  shadowColor: '#f0c040',
+                  shadowOpacity: savedGlowAnim,
+                  shadowRadius: 14,
+                  shadowOffset: { width: 0, height: 0 },
+                  elevation: savedGlowAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 12] }),
+                },
+              ]}
+            >
+              <Pressable
+                style={({ pressed }) => [
+                  styles.presetBtn,
+                  isSaveMode && styles.presetBtnSaveMode,
+                  pressed && styles.presetBtnPressed,
+                ]}
+                onPress={() => {
+                  if (isSaveMode) {
+                    handleSaveToSlot(i);
+                  } else if (sp) {
+                    applyBpm(sp.bpm);
+                    setBeats(1, sp.beatsA);
+                    setBeats(2, sp.beatsB);
+                    setStepPatternA(sp.patternA);
+                    setStepPatternB(sp.patternB);
+                  }
+                }}
+                accessibilityLabel={isSaveMode ? `In Slot ${i + 1} speichern` : (sp ? sp.label : `Leerer Slot ${i + 1}`)}
+              >
+                {sp ? (
+                  <StepMiniGrid
+                    patternA={sp.patternA}
+                    patternB={sp.patternB}
+                    beatsA={sp.beatsA}
+                    beatsB={sp.beatsB}
+                    slotNum={i + 1}
+                  />
+                ) : (
+                  <StepMiniEmpty slotNum={i + 1} />
+                )}
+              </Pressable>
+            </Animated.View>
+          )) : presets.map((p, i) => (
             <Animated.View
               key={i}
               style={[
@@ -267,8 +373,6 @@ export default function App() {
                   } else {
                     loadPreset(p);
                     setKaraokeTrack(p.karaokeTrack ?? 'ab');
-                    if (p.stepPatternA) setStepPatternA(p.stepPatternA);
-                    if (p.stepPatternB) setStepPatternB(p.stepPatternB);
                   }
                 }}
                 accessibilityLabel={isSaveMode ? `In Slot ${i + 1} speichern` : p.label}
@@ -665,14 +769,18 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 6,
+    paddingHorizontal: 4,
+    paddingTop: 6,
+    paddingBottom: 2,
   },
   presetBtnWrapper: {
-    flex: 1,
-    minWidth: '22%',
+    width: '23%',
+    flexGrow: 0,
+    flexShrink: 0,
     borderRadius: 8,
+    overflow: 'hidden',
+    marginRight: 5,
+    marginBottom: 5,
   },
   presetBtn: {
     flex: 1,
@@ -762,6 +870,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     gap: 4,
+    backgroundColor: BG2,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
   },

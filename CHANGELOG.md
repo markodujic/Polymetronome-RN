@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.9.1] – 2026-03-12
+
+### Added
+- **Separate Step-Presets** – 8 eigene Speicherplätze für den Step-Modus (`useStepPresets`-Hook, AsyncStorage-Key `@polymetronome_step_presets_v1`); Grid/Circle-Presets bleiben davon unberührt
+- **StepMiniGrid / StepMiniEmpty** – Miniaturvorschau der Step-Sequenz in den Preset-Buttons; zeigt flattenPattern-Punkte als Timeline (orange Track A, gold Track B); leere Slots zeigen `—`
+- **KaraokeBar im Step-Modus ausgeblendet** – mehr Platz für den StepCanvas
+
+### Changed
+- **StepView Layout** – feste `ROW_HEIGHT = 60` entfernt; Track-Reihen teilen die verfügbare Höhe mit `flex: 1` + `maxHeight: 200`; `gap: 12` im Container
+- **Preset-Canvas 4-Spalten-Fix** – `presetBtnWrapper` auf feste Breite `23%` + `margin` statt `gap` (Android `flexWrap`-Kompatibilität)
+- **SliderGroup Hintergrund** – `backgroundColor: BG2` + `borderTopWidth: 1` verhindert visuelles Überlappen mit dem Canvas
+
+### Known Issues (Android, nächste Session)
+- Preset-Button `borderRadius` clippt auf Android nicht korrekt
+- Slider-Bereich (MICRO/PULSE/HZ) wird durch PolyCanvas überlagert
+
+---
+
 ## [1.9.0] – 2026-03-12
 
 ### Added

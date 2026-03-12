@@ -20,7 +20,6 @@ import { updateNode, subdivideNode, collapseNode } from '../types/stepPattern';
 
 const ACCENT_A = '#ff6b35';
 const ACCENT_B = '#e8aa14';
-const ROW_HEIGHT = 60;
 
 // ─── Props ───────────────────────────────────────────────────────────────────
 
@@ -273,7 +272,7 @@ export function StepView({
       <View style={[styles.trackLabel, { backgroundColor: color }]}>
         <Text style={styles.trackLabelTxt}>{label}</Text>
       </View>
-      <View style={[styles.beatsRow, { height: ROW_HEIGHT }]}>
+      <View style={[styles.beatsRow]}>
         {pattern.nodes.map((node, beatIdx) => (
           <View key={node.id} style={styles.beatCell}>
             {/* Flash overlay – on top of content, blocks no touches */}
@@ -313,8 +312,7 @@ export function StepView({
       {/* Track rows */}
       <View style={styles.tracksContainer}>
         {renderTrack('A', ACCENT_A, patternA, flashA.current, toggleA, longA)}
-        <View style={styles.rowSpacer} />
-        {renderTrack('B', ACCENT_B, patternB, flashB.current, toggleB, longB)}
+      {renderTrack('B', ACCENT_B, patternB, flashB.current, toggleB, longB)}
       </View>
 
       {/* Subdivision picker */}
@@ -364,10 +362,13 @@ const styles = StyleSheet.create({
   tracksContainer: {
     flex: 1,
     justifyContent: 'center',
+    gap: 12,
   },
   trackRowOuter: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'stretch',
+    maxHeight: 200,
   },
   trackLabel: {
     width: 30,
@@ -400,7 +401,7 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   rowSpacer: {
-    height: 12,
+    height: 0,
   },
 
   // Node cells

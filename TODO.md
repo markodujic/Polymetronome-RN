@@ -33,6 +33,10 @@
 - [ ] On iOS Safari, rapid double-taps on the Play button can occasionally produce a delayed first beat
 - [ ] At very high BPM (>240) with large beat counts the LCM grid in `PolyCanvas` can become very dense (e.g. 5:7 = 35 cells) and individual cells visually very narrow on small screens
 
+### Android UI (nächste Session)
+- [ ] **Preset-Button Rundungen fehlen (Android)** – `gap` in `flexWrap`-Container wird auf Android ignoriert; `margin`-Ansatz + `overflow: hidden` zeigt noch keinen Effekt; BorderRadius-Clipping auf nativer Ebene prüfen
+- [ ] **Slider-Bereich (MICRO / PULSE / HZ) durch PolyCanvas verdeckt** – `backgroundColor: BG2` auf `sliderGroup` hat den Layering-Bug auf Android nicht behoben; z-Index / Reihenfolge der Views prüfen
+
 ---
 
 ## Recently Fixed (1.9.0)
