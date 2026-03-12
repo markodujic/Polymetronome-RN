@@ -101,8 +101,8 @@ für jede scheduled Beat-Position (beat i, Track A oder B):
 5. `App.tsx` — viewMode `'step'`, StepPattern-State, `'raster'` → `'polygrid'`
 
 ## Status
-- [ ] `src/types/stepPattern.ts` erstellen
-- [ ] AudioEngine `setStepEvents()` + Step-Scheduler implementieren
-- [ ] `StepView.tsx` Design-Modus
-- [ ] `StepView.tsx` Play-Modus
-- [ ] App.tsx Integration (`'raster'` → `'polygrid'`, dritter Button)
+- [x] `src/types/stepPattern.ts` erstellen
+- [x] AudioEngine `setStepEvents()` + Step-Scheduler implementieren
+- [x] `StepView.tsx` Design-Modus
+- [x] `StepView.tsx` Play-Modus
+- [x] App.tsx Integration (`'raster'` → `'polygrid'`, dritter Button)

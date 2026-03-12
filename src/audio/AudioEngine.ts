@@ -82,6 +82,10 @@ class AudioEngine {
   private epoch = 0;
   private cellsFromEpoch = 0;
 
+  /* ---- step-sequencer mode ---- */
+  private stepEventsA: number[][] | null = null; // events[beatIndex] = offsets 0-1
+  private stepEventsB: number[][] | null = null;
+
   /* ---- track config ---- */
   private soundA: ClickSound = 'sine-high';
   private soundB: ClickSound = 'sine-low';
@@ -178,6 +182,8 @@ class AudioEngine {
       try { osc.stop(); } catch { /* already stopped */ }
     }
     this.activePulseOscs = [];
+    this.scheduledStepTimes.clear();
+    this._stepCacheCutoff = 0;
   }
 
   /** Live BPM change – scales remaining time proportionally. */
@@ -218,6 +224,37 @@ class AudioEngine {
     this.microAccents = accents;
   }
 
+  /**
+   * Setzt Step-Events für Track A oder B.
+   * `events[beatIndex]` = Array von Offsets (0–1) innerhalb dieses Beats.
+   * Übergabe von `null` deaktiviert den Step-Modus für diesen Track.
+   * Beide Tracks müssen gesetzt sein, damit der Step-Scheduler aktiv wird.
+   */
+  setStepEvents(trackId: 1 | 2, events: number[][] | null): void {
+    if (trackId === 1) this.stepEventsA = events;
+    else               this.stepEventsB = events;
+
+    // Always clear the schedule cache so the new pattern takes effect immediately.
+    this.scheduledStepTimes.clear();
+    this._stepCacheCutoff = 0;
+
+    if (this._isPlaying && this.ctx) {
+      const bothSet = this.stepEventsA !== null && this.stepEventsB !== null;
+      const bothNull = this.stepEventsA === null && this.stepEventsB === null;
+      if (bothSet || bothNull) {
+        // Hard-resync when entering/updating step mode or returning to LCM mode.
+        const now = this.ctx.currentTime + 0.05;
+        this.epoch = now;
+        this.cellsFromEpoch = 0;
+      }
+    }
+  }
+
+  /** Gibt zurück ob beide Tracks Step-Events gesetzt haben (Step-Modus aktiv). */
+  get isStepMode(): boolean {
+    return this.stepEventsA !== null && this.stepEventsB !== null;
+  }
+
   updateTrack(track: MetronomeTrack): void {
     if (track.id === 1) { this.soundA = track.sound; this.accentsA = track.accents; }
     else if (track.id === 2) { this.soundB = track.sound; this.accentsB = track.accents; this.beatLevelsB = track.beatLevels; }
@@ -248,6 +285,86 @@ class AudioEngine {
 
   private scheduler = (): void => {
     if (!this._isPlaying || !this.ctx) return;
+
+    if (this.isStepMode) {
+      this.stepScheduler();
+    } else {
+      this.lcmScheduler();
+    }
+
+    this.schedulerTimer = setTimeout(this.scheduler, SCHEDULER_INTERVAL);
+  };
+
+  /**
+   * Step-Scheduler: ersetzt den LCM-Scheduler wenn Step-Modus aktiv ist.
+   * Läuft Beat-basiert statt Gitter-basiert; unterstützt Triolen-Offsets.
+   */
+  private stepScheduler = (): void => {
+    if (!this.ctx || !this.stepEventsA || !this.stepEventsB) return;
+    const now = this.ctx.currentTime;
+    const beatDurationA = (60 / this.masterBpm);          // 4tel-Dauer in Sekunden
+    const beatDurationB = beatDurationA * this.beatsA / this.beatsB;
+
+    // SCHEDULE_AHEAD_TIME nach vorne schauen
+    const horizon = now + SCHEDULE_AHEAD_TIME;
+
+    // Maximale Beats die im Fenster liegen könnten
+    const maxBeatsA = Math.ceil((horizon - this.epoch) / beatDurationA) + 1;
+    const maxBeatsB = Math.ceil((horizon - this.epoch) / beatDurationB) + 1;
+
+    // Track A
+    for (let beat = 0; beat < maxBeatsA; beat++) {
+      const eventsForBeat = this.stepEventsA[beat % this.beatsA] ?? [0];
+      for (const offset of eventsForBeat) {
+        const t = this.epoch + (beat + offset) * beatDurationA;
+        if (t < now - 0.001) continue;    // bereits vergangen
+        if (t >= horizon) break;
+        const tag = `a_${beat}_${offset}`;
+        if (this.scheduledStepTimes.has(tag)) continue;
+        this.scheduledStepTimes.add(tag);
+        const accent = this.accentsA[beat % this.accentsA.length];
+        if (this._volA > 0) this.playSound(this.soundA, accent, this.gainA!, t);
+        this.fireBeat(1, beat % this.beatsA, t);
+        if (this._volPulse > 0 && this._volA > 0 && offset === 0) {
+          this.schedulePulse(t, t + beatDurationA);
+        }
+      }
+    }
+
+    // Track B
+    for (let beat = 0; beat < maxBeatsB; beat++) {
+      const eventsForBeat = this.stepEventsB[beat % this.beatsB] ?? [0];
+      for (const offset of eventsForBeat) {
+        const t = this.epoch + (beat + offset) * beatDurationB;
+        if (t < now - 0.001) continue;
+        if (t >= horizon) break;
+        const tag = `b_${beat}_${offset}`;
+        if (this.scheduledStepTimes.has(tag)) continue;
+        this.scheduledStepTimes.add(tag);
+        const accent = this.accentsB[beat % this.accentsB.length];
+        const beatLevel = this.beatLevelsB[beat % this.beatLevelsB.length];
+        if (this._volB > 0 && beatLevel > 0) {
+          this.playSoundAtLevel(this.soundB, accent, this.gainB!, t, beatLevel);
+        }
+        if (beatLevel > 0) this.fireBeat(2, beat % this.beatsB, t);
+      }
+    }
+
+    // Alten Eintrag-Cache beschneiden (nur letzte 2 LCM-Perioden behalten)
+    const period = this.beatsA * this.beatsB * Math.max(beatDurationA, beatDurationB);
+    const cutoff = now - period * 2;
+    if (this._stepCacheCutoff < cutoff) {
+      this._stepCacheCutoff = cutoff;
+      this.scheduledStepTimes.clear();
+    }
+  };
+
+  private scheduledStepTimes: Set<string> = new Set();
+  private _stepCacheCutoff = 0;
+
+  /** LCM-Scheduler (originaler Algorithmus). */
+  private lcmSchedulerBody = (): void => {
+    if (!this.ctx) return;
     const now = this.ctx.currentTime;
 
     while (true) {
@@ -286,9 +403,10 @@ class AudioEngine {
 
       this.cellsFromEpoch++;
     }
+  };
 
-    // Use global setTimeout (no window object in React Native)
-    this.schedulerTimer = setTimeout(this.scheduler, SCHEDULER_INTERVAL);
+  private lcmScheduler = (): void => {
+    this.lcmSchedulerBody();
   };
 
   /* ================================================================

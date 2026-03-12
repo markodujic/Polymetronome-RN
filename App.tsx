@@ -1,5 +1,5 @@
 import './global.css';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
   StyleSheet, useWindowDimensions, Pressable, Platform, Animated,
@@ -16,6 +16,10 @@ import { PolyCanvas } from './src/components/PolyCanvas';
 import { CircleViz } from './src/components/CircleViz';
 import { KaraokeBar } from './src/components/KaraokeBar';
 import { SettingsSheet } from './src/components/SettingsSheet';
+import { StepView } from './src/components/StepView';
+import { makeDefaultPattern, flattenPattern } from './src/types/stepPattern';
+import type { TrackStepPattern } from './src/types/stepPattern';
+import { audioEngine } from './src/audio/AudioEngine';
 import type { ClickSound } from './src/audio/AudioEngine';
 
 function PresetMiniGrid({ beatsA, beatsB, accentsA, accentsB, slotNum }: {
@@ -89,7 +93,9 @@ export default function App() {
   const playBtnSize = Math.max(48, Math.round(68 * scale));
 
   const [focusedTrack, setFocusedTrack] = useState<'A' | 'B'>('A');
-  const [viewMode, setViewMode] = useState<'raster' | 'circle'>('raster');
+  const [viewMode, setViewMode] = useState<'polygrid' | 'circle' | 'step'>('polygrid');
+  const [stepPatternA, setStepPatternA] = useState<TrackStepPattern>(() => makeDefaultPattern(trackA.beats));
+  const [stepPatternB, setStepPatternB] = useState<TrackStepPattern>(() => makeDefaultPattern(trackB.beats));
   const [karaokeOn, setKaraokeOn] = useState(true);
   const [karaokeTrack, setKaraokeTrack] = useState<'a' | 'b' | 'ab'>('ab');
   const [settingsVisible, setSettingsVisible] = useState(false);
@@ -166,9 +172,29 @@ export default function App() {
   const setSoundA = useCallback((s: ClickSound) => setSound(1, s), [setSound]);
   const setSoundB = useCallback((s: ClickSound) => setSound(2, s), [setSound]);
 
+  // When beat count changes, rebuild the step pattern (reset to all-active leaves).
+  useEffect(() => {
+    setStepPatternA(makeDefaultPattern(trackA.beats));
+  }, [trackA.beats]);
+  useEffect(() => {
+    setStepPatternB(makeDefaultPattern(trackB.beats));
+  }, [trackB.beats]);
+
+  // Sync step events to AudioEngine whenever step mode is active or patterns change.
+  useEffect(() => {
+    if (viewMode === 'step') {
+      audioEngine.setStepEvents(1, flattenPattern(stepPatternA));
+      audioEngine.setStepEvents(2, flattenPattern(stepPatternB));
+    } else {
+      audioEngine.setStepEvents(1, null);
+      audioEngine.setStepEvents(2, null);
+    }
+  }, [viewMode, stepPatternA, stepPatternB]);
+
   const beatIntervalSec = 60 / bpm;
   const pulseActive = isPlaying && volumePulse > 0 && volumeA > 0;
-  const karaokeBarH = (viewMode === 'raster' && karaokeOn) ? Math.max(36, Math.round(64 * scale)) : 0;
+  const karaokeBarH = ((viewMode === 'polygrid' || viewMode === 'step') && karaokeOn)
+    ? Math.max(36, Math.round(64 * scale)) : 0;
 
   const controlsSection = (
     <>
@@ -272,10 +298,10 @@ export default function App() {
       {/* View toggle */}
       <View style={styles.viewToggle}>
         <TouchableOpacity
-          style={[styles.viewBtn, viewMode === 'raster' && styles.viewBtnActive, scale < 1 && { paddingVertical: Math.max(4, Math.round(10 * scale)) }]}
-          onPress={() => setViewMode('raster')}
+          style={[styles.viewBtn, viewMode === 'polygrid' && styles.viewBtnActive, scale < 1 && { paddingVertical: Math.max(4, Math.round(10 * scale)) }]}
+          onPress={() => setViewMode('polygrid')}
         >
-          <Text style={[styles.viewBtnTxt, viewMode === 'raster' && styles.viewBtnTxtActive]}>
+          <Text style={[styles.viewBtnTxt, viewMode === 'polygrid' && styles.viewBtnTxtActive]}>
             Grid
           </Text>
         </TouchableOpacity>
@@ -285,6 +311,14 @@ export default function App() {
         >
           <Text style={[styles.viewBtnTxt, viewMode === 'circle' && styles.viewBtnTxtActive]}>
             Circle
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.viewBtn, viewMode === 'step' && styles.viewBtnActive, scale < 1 && { paddingVertical: Math.max(4, Math.round(10 * scale)) }]}
+          onPress={() => setViewMode('step')}
+        >
+          <Text style={[styles.viewBtnTxt, viewMode === 'step' && styles.viewBtnTxtActive]}>
+            Step
           </Text>
         </TouchableOpacity>
       </View>
@@ -321,7 +355,7 @@ export default function App() {
 
   const canvasSection = (
     <View style={[styles.canvasArea, isLandscape && styles.canvasAreaLandscape]}>
-      {viewMode === 'raster' ? (
+      {viewMode === 'polygrid' ? (
         <PolyCanvas
           trackA={trackA} trackB={trackB}
           activeBeatA={activeBeatA} activeBeatB={activeBeatB}
@@ -333,7 +367,7 @@ export default function App() {
           pulseActive={pulseActive}
           beatIntervalSec={beatIntervalSec}
         />
-      ) : (
+      ) : viewMode === 'circle' ? (
         <CircleViz
           trackA={trackA} trackB={trackB}
           activeBeatA={activeBeatA} activeBeatB={activeBeatB}
@@ -343,6 +377,18 @@ export default function App() {
           customPhrases={customPhrases}
           karaokeTrack={karaokeTrack}
           onKaraokeTrack={setKaraokeTrack}
+        />
+      ) : (
+        <StepView
+          patternA={stepPatternA}
+          patternB={stepPatternB}
+          onPatternA={setStepPatternA}
+          onPatternB={setStepPatternB}
+          activeBeatA={activeBeatA}
+          activeBeatB={activeBeatB}
+          isPlaying={isPlaying}
+          beatsA={trackA.beats}
+          beatsB={trackB.beats}
         />
       )}
     </View>
