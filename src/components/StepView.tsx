@@ -4,6 +4,8 @@ import React, {
   useEffect,
   useCallback,
   memo,
+  forwardRef,
+  useImperativeHandle,
 } from 'react';
 import {
   View,
@@ -35,6 +37,13 @@ export interface StepViewProps {
   beatsA: number;
   beatsB: number;
   onReset: () => void;
+}
+
+// ─── Handle (exposed via ref) ─────────────────────────────────────────────────
+
+export interface StepViewHandle {
+  /** Returns { trackId, path } for screen coords (x, y), or null if no hit. */
+  hitTest(x: number, y: number): { trackId: 1 | 2; path: number[] } | null;
 }
 
 // ─── Subdivision Picker Modal ─────────────────────────────────────────────────
@@ -94,6 +103,8 @@ interface NodeCellProps {
   onToggle: (path: number[]) => void;
   /** depth is forwarded so the handler can decide: subdivide vs collapse-parent. */
   onLongAction: (path: number[], depth: number) => void;
+  /** Called by leaf nodes to register their screen position for drag hit-testing. */
+  onLeafMount: (path: number[], view: any) => void;
 }
 
 const NodeCell = memo(function NodeCell({
@@ -104,7 +115,11 @@ const NodeCell = memo(function NodeCell({
   isDesign,
   onToggle,
   onLongAction,
+  onLeafMount,
 }: NodeCellProps) {
+  // useRef muss vor dem early-return stehen (Hook-Regel)
+  const nodeRef = useRef<any>(null);
+
   if (node.subdivision !== null) {
     // Subdivided – render children as a horizontal flex row.
     // A thin colored top-border visually groups the sub-cells.
@@ -125,6 +140,7 @@ const NodeCell = memo(function NodeCell({
             isDesign={isDesign}
             onToggle={onToggle}
             onLongAction={onLongAction}
+            onLeafMount={onLeafMount}
           />
         ))}
       </View>
@@ -137,6 +153,11 @@ const NodeCell = memo(function NodeCell({
 
   return (
     <TouchableOpacity
+      ref={nodeRef}
+      onLayout={() => {
+        // onLayout féuert nach dem echten Layout – measureInWindow liefert korrekte Werte
+        if (nodeRef.current) onLeafMount(fullPath, nodeRef.current);
+      }}
       style={[
         styles.leafCell,
         {
@@ -155,9 +176,12 @@ const NodeCell = memo(function NodeCell({
   );
 });
 
+type LayoutRect = { x: number; y: number; w: number; h: number };
+type LeafEntry = { path: number[]; rect: LayoutRect };
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function StepView({
+export const StepView = forwardRef<StepViewHandle, StepViewProps>(function StepView({
   patternA,
   patternB,
   onPatternA,
@@ -168,8 +192,63 @@ export function StepView({
   beatsA,
   beatsB,
   onReset,
-}: StepViewProps) {
+}: StepViewProps, ref) {
   const [picker, setPicker] = useState<{ path: number[]; trackId: 1 | 2; depth: number } | null>(null);
+
+  // ── Beat cell refs + layout cache (for drag-and-drop hit testing) ────────
+  const beatRefsA = useRef<Array<any>>([]);
+  const beatRefsB = useRef<Array<any>>([]);
+  const layoutCacheA = useRef<LeafEntry[]>([]);
+  const layoutCacheB = useRef<LeafEntry[]>([]);
+
+  // Clear leaf caches when beat counts change (stale entries would mis-hit)
+  useEffect(() => { layoutCacheA.current = []; beatRefsA.current = []; }, [beatsA]);
+  useEffect(() => { layoutCacheB.current = []; beatRefsB.current = []; }, [beatsB]);
+
+  const registerLeafA = useCallback((path: number[], view: any) => {
+    view?.measureInWindow((x: number, y: number, w: number, h: number) => {
+      if (w === 0 && h === 0) return; // Layout noch nicht bereit
+      const key = path.join(',');
+      // Alten Eintrag für denselben Pfad + stale Parent-Einträge (Präfix) entfernen
+      layoutCacheA.current = layoutCacheA.current.filter(e => {
+        const eKey = e.path.join(',');
+        if (eKey === key) return false;
+        if (e.path.length < path.length && key.startsWith(eKey + ',')) return false;
+        return true;
+      });
+      layoutCacheA.current.push({ path, rect: { x, y, w, h } });
+    });
+  }, []);
+
+  const registerLeafB = useCallback((path: number[], view: any) => {
+    view?.measureInWindow((x: number, y: number, w: number, h: number) => {
+      if (w === 0 && h === 0) return;
+      const key = path.join(',');
+      layoutCacheB.current = layoutCacheB.current.filter(e => {
+        const eKey = e.path.join(',');
+        if (eKey === key) return false;
+        if (e.path.length < path.length && key.startsWith(eKey + ',')) return false;
+        return true;
+      });
+      layoutCacheB.current.push({ path, rect: { x, y, w, h } });
+    });
+  }, []);
+
+  useImperativeHandle(ref, () => ({
+    hitTest(x: number, y: number) {
+      for (const e of layoutCacheA.current) {
+        const r = e.rect;
+        if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
+          return { trackId: 1 as const, path: e.path };
+      }
+      for (const e of layoutCacheB.current) {
+        const r = e.rect;
+        if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h)
+          return { trackId: 2 as const, path: e.path };
+      }
+      return null;
+    },
+  }), []);
 
   // ── Flash animation maps (stable ref objects) ────────────────────────────
   const flashA = useRef<{ [k: number]: Animated.Value }>({});
@@ -267,14 +346,18 @@ export function StepView({
     flashMap: { [k: number]: Animated.Value },
     onTog: (p: number[]) => void,
     onLng: (p: number[], d: number) => void,
+    cellRefs: React.MutableRefObject<any[]>,
+    layoutCache: React.MutableRefObject<LeafEntry[]>,
+    registerLeaf: (path: number[], view: any) => void,
   ) => (
     <View style={styles.trackRowOuter}>
-      <View style={[styles.trackLabel, { backgroundColor: color }]}>
-        <Text style={styles.trackLabelTxt}>{label}</Text>
-      </View>
       <View style={[styles.beatsRow]}>
         {pattern.nodes.map((node, beatIdx) => (
-          <View key={node.id} style={styles.beatCell}>
+          <View
+            key={node.id}
+            style={styles.beatCell}
+            ref={(el: any) => { cellRefs.current[beatIdx] = el; }}
+          >
             {/* Flash overlay – on top of content, blocks no touches */}
             <Animated.View
               style={[
@@ -291,6 +374,7 @@ export function StepView({
               isDesign={true}
               onToggle={onTog}
               onLongAction={onLng}
+              onLeafMount={registerLeaf}
             />
           </View>
         ))}
@@ -311,8 +395,8 @@ export function StepView({
 
       {/* Track rows */}
       <View style={styles.tracksContainer}>
-        {renderTrack('A', ACCENT_A, patternA, flashA.current, toggleA, longA)}
-      {renderTrack('B', ACCENT_B, patternB, flashB.current, toggleB, longB)}
+        {renderTrack('A', ACCENT_A, patternA, flashA.current, toggleA, longA, beatRefsA, layoutCacheA, registerLeafA)}
+        {renderTrack('B', ACCENT_B, patternB, flashB.current, toggleB, longB, beatRefsB, layoutCacheB, registerLeafB)}
       </View>
 
       {/* Subdivision picker */}
@@ -326,7 +410,7 @@ export function StepView({
       )}
     </View>
   );
-}
+});
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 

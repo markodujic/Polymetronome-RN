@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [1.9.2] – 2026-03-13
+
+### Added
+- **Step-Modus Toolbar** – Die MICRO/PULSE/HZ-Slider-Zeile wird im Step-Modus durch eine Reihe von 5 Drag-and-Drop-Tool-Buttons ersetzt (`stepToolBar`). Buttons: ÷3, ÷3 –, ×4, Btn 4, Btn 5.
+- **Drag-and-Drop auf Beat-Zellen** – Jeder Toolbar-Button besitzt einen eigenen `PanResponder`. Beim Ziehen folgt ein Ghost-Element (absolute position, `zIndex 9999`) dem Finger/Mauszeiger. Beim Loslassen wird `StepViewHandle.hitTest(x, y)` aufgerufen um den Ziel-Knoten (Track + Pfad) zu ermitteln.
+- **Pfad-basiertes Leaf-Hit-Testing** – `StepView` exportiert das Interface `StepViewHandle` mit `hitTest(x, y): { trackId: 1|2; path: number[] } | null`. Intern wird ein `LeafEntry[]`-Layout-Cache (`{ path, rect: {x,y,w,h} }`) geführt, der via `onLayout` + `measureInWindow` nach jedem Render befüllt wird. Alte Eltern-Einträge werden beim Befüllen herausgefiltert (Präfix-Bereinigung).
+- **Tool-Patterns** – Die ersten drei Buttons wenden definierte Subdivisionsregeln an: `÷3` → `subdivideNode(n, 3)`; `÷3 –` → Triole mit deaktiviertem Mittel-Kind; `×4` → zwei Ebenen binär (4 Blätter).
+- **Re-Subdivision bereits unterteilter Zellen** – Tools werden auf alle Blätter eines Beats angewendet (`updateNode` mit `path` → direkte Pfad-Ansteuerung).
+- **A/B-Beschriftungsfelder in StepView entfernt** – `trackLabel`-Block herausgenommen; mehr Platz für Beat-Zellen.
+
+### Fixed
+- **Audio stoppt bei BPM-Änderung im Step-Modus** – `AudioEngine.setMasterBpm` hatte im Step-Modus keinen eigenen Branch; LCM-basierte Epoch-Neuberechnung legte Events in die Vergangenheit → Cursor-Race → Stille. Fix: Neuer `isStepMode`-Branch mit beat-duration-basierter Cycle-Skalierung + Cursor-Reset.
+- **Text-Selektion beim Ziehen** – `selectable={false}` auf Toolbar-Button-Labels + `userSelect: 'none'` im Web-Style verhindert Textmarkierung während des Drag-Vorgangs.
+- **Hit-Test funktionierte nicht nach Subdivision** – Zwei Bugs behoben: (1) `ref`-Callback feuert vor dem Layout → `measureInWindow` lieferte 0,0,0,0; Fix: `useRef` + `onLayout` in `NodeCell`. (2) Nach Subdivision blieb der alte Eltern-Eintrag `[0]` im Cache → wurde vor dem Kindknoten getroffen; Fix: `registerLeaf` filtert Präfix-Einträge heraus.
+
+---
+
 ## [1.9.1] – 2026-03-12
 
 ### Added

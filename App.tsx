@@ -1,8 +1,8 @@
 import './global.css';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, useWindowDimensions, Pressable, Platform, Animated,
+  StyleSheet, useWindowDimensions, Pressable, Platform, Animated, PanResponder,
 } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -17,8 +17,9 @@ import { CircleViz } from './src/components/CircleViz';
 import { KaraokeBar } from './src/components/KaraokeBar';
 import { SettingsSheet } from './src/components/SettingsSheet';
 import { StepView } from './src/components/StepView';
-import { makeDefaultPattern, flattenPattern } from './src/types/stepPattern';
-import type { TrackStepPattern } from './src/types/stepPattern';
+import type { StepViewHandle } from './src/components/StepView';
+import { makeDefaultPattern, flattenPattern, subdivideNode, collapseNode, updateNode } from './src/types/stepPattern';
+import type { TrackStepPattern, StepNode } from './src/types/stepPattern';
 import { useStepPresets } from './src/hooks/useStepPresets';
 import type { StepPreset } from './src/hooks/useStepPresets';
 import { audioEngine } from './src/audio/AudioEngine';
@@ -152,6 +153,8 @@ export default function App() {
   const [isSaveMode, setIsSaveMode] = useState(false);
   const [savedSlotIdx, setSavedSlotIdx] = useState<number | null>(null);
   const savedGlowAnim = useRef(new Animated.Value(0)).current;
+  const stepViewRef = useRef<StepViewHandle>(null);
+  const [dragState, setDragState] = useState<{ tool: string; gx: number; gy: number } | null>(null);
 
   const handleCustomPhrase = useCallback((sylCount: number, text: string) => {
     setCustomPhrases(prev => ({ ...prev, [sylCount]: text }));
@@ -256,6 +259,56 @@ export default function App() {
   const pulseActive = isPlaying && volumePulse > 0 && volumeA > 0;
   const karaokeBarH = (viewMode === 'polygrid' && karaokeOn)
     ? Math.max(36, Math.round(64 * scale)) : 0;
+
+  // ── Drag-and-Drop ────────────────────────────────────────────────────────────────
+  // applyDragTool in Ref halten, damit PanResponder-Closures immer aktuelle Version lesen
+  const applyDragToolRef = useRef<(tool: string, trackId: 1 | 2, path: number[]) => void>(null!);
+  applyDragToolRef.current = (tool, trackId, path) => {
+    // path zeigt genau auf das getroffene Blatt – direkt anwenden, kein applyToLeaves nötig
+    const depth = path.length - 1;
+    const applyLeaf = (n: StepNode): StepNode => {
+      if (n.subdivision !== null || depth >= 3) return n;
+      if (tool === '÷3') return subdivideNode(n, 3);
+      if (tool === '÷3 –') {
+        const sub = subdivideNode(n, 3);
+        return { ...sub, children: sub.children.map((c, i) => i === 1 ? { ...c, active: false } : c) };
+      }
+      if (tool === '×4') {
+        const half = subdivideNode(n, 2);
+        return { ...half, children: half.children.map(c => depth < 2 ? subdivideNode(c, 2) : c) };
+      }
+      return n;
+    };
+    if (trackId === 1) {
+      setStepPatternA(prev => ({ nodes: updateNode(prev.nodes, path, applyLeaf) }));
+    } else {
+      setStepPatternB(prev => ({ nodes: updateNode(prev.nodes, path, applyLeaf) }));
+    }
+  };
+
+  const dragLabels = ['÷3', '÷3 –', '×4', 'Btn 4', 'Btn 5'] as const;
+  const dragResponders = useMemo(
+    () =>
+      dragLabels.map(tool =>
+        PanResponder.create({
+          onStartShouldSetPanResponder: () => true,
+          onPanResponderGrant: e => {
+            setDragState({ tool, gx: e.nativeEvent.pageX, gy: e.nativeEvent.pageY });
+          },
+          onPanResponderMove: e => {
+            setDragState(d => d ? { ...d, gx: e.nativeEvent.pageX, gy: e.nativeEvent.pageY } : null);
+          },
+          onPanResponderRelease: e => {
+            const hit = stepViewRef.current?.hitTest(e.nativeEvent.pageX, e.nativeEvent.pageY);
+            if (hit) applyDragToolRef.current(tool, hit.trackId, hit.path);
+            setDragState(null);
+          },
+          onPanResponderTerminate: () => setDragState(null),
+        }),
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const controlsSection = (
     <>
@@ -438,32 +491,42 @@ export default function App() {
       </View>
 
       {/* Micro / Pulse / Frequency sliders – single horizontal row */}
-      <View style={[styles.sliderGroup, scale < 1 && { paddingVertical: Math.max(2, Math.round(6 * scale)) }]}>
-        <CompactSlider
-          label="MICRO"
-          muted={volumeMicro === 0}
-          onMute={muteMicro}
-          value={volumeMicro}
-          onValueChange={(v) => changeVolume('micro', v)}
-          sliderHeight={Math.max(22, Math.round(32 * scale))}
-        />
-        <CompactSlider
-          label="PULSE"
-          muted={volumePulse === 0}
-          onMute={mutePulse}
-          value={volumePulse}
-          onValueChange={(v) => changeVolume('pulse', v)}
-          sliderHeight={Math.max(22, Math.round(32 * scale))}
-        />
-        <CompactSlider
-          label={`${pulseFreq} HZ`}
-          muted={false}
-          onMute={() => {}}
-          value={pulseFreq / 5000}
-          onValueChange={(v) => setPulseFreq(Math.round(v * 5000 / 10) * 10 || 50)}
-          sliderHeight={Math.max(22, Math.round(32 * scale))}
-        />
-      </View>
+      {viewMode === 'step' ? (
+        <View style={styles.stepToolBar}>
+          {dragLabels.map((label, i) => (
+            <View key={label} style={styles.stepToolBtn} {...dragResponders[i].panHandlers}>
+              <Text style={styles.stepToolBtnTxt} selectable={false}>{label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : (
+        <View style={[styles.sliderGroup, scale < 1 && { paddingVertical: Math.max(2, Math.round(6 * scale)) }]}>
+          <CompactSlider
+            label="MICRO"
+            muted={volumeMicro === 0}
+            onMute={muteMicro}
+            value={volumeMicro}
+            onValueChange={(v) => changeVolume('micro', v)}
+            sliderHeight={Math.max(22, Math.round(32 * scale))}
+          />
+          <CompactSlider
+            label="PULSE"
+            muted={volumePulse === 0}
+            onMute={mutePulse}
+            value={volumePulse}
+            onValueChange={(v) => changeVolume('pulse', v)}
+            sliderHeight={Math.max(22, Math.round(32 * scale))}
+          />
+          <CompactSlider
+            label={`${pulseFreq} HZ`}
+            muted={false}
+            onMute={() => {}}
+            value={pulseFreq / 5000}
+            onValueChange={(v) => setPulseFreq(Math.round(v * 5000 / 10) * 10 || 50)}
+            sliderHeight={Math.max(22, Math.round(32 * scale))}
+          />
+        </View>
+      )}
     </>
   );
 
@@ -494,6 +557,7 @@ export default function App() {
         />
       ) : (
         <StepView
+          ref={stepViewRef}
           patternA={stepPatternA}
           patternB={stepPatternB}
           onPatternA={setStepPatternA}
@@ -578,6 +642,14 @@ export default function App() {
             />
           </View>
           {playButton}
+        </View>
+      )}
+      {dragState != null && (
+        <View
+          pointerEvents="none"
+          style={[styles.dragGhost, { left: dragState.gx - 30, top: dragState.gy - 22 }]}
+        >
+          <Text style={styles.dragGhostTxt}>{dragState.tool}</Text>
         </View>
       )}
     </SafeAreaView>
@@ -875,6 +947,48 @@ const styles = StyleSheet.create({
     borderTopColor: BORDER,
     borderBottomWidth: 1,
     borderBottomColor: BORDER,
+  },
+  stepToolBar: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+    backgroundColor: BG2,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  stepToolBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#2a2a2e',
+    borderWidth: 1,
+    borderColor: '#444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...(Platform.OS === 'web' ? { userSelect: 'none', cursor: 'grab' } as any : {}),
+  },
+  stepToolBtnTxt: {
+    color: '#aaa',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  dragGhost: {
+    position: 'absolute',
+    zIndex: 9999,
+    width: 60,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    backgroundColor: '#ff6b35cc',
+    alignItems: 'center',
+  },
+  dragGhostTxt: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   compactSliderCol: {
     flex: 1,

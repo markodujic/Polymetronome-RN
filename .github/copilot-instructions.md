@@ -13,7 +13,7 @@ Zielplattform: primär **Android** (nativ), Web als Preview.
 - **`src/components/RhythmTrack.tsx`** – Kompakte Track-Zeile (Label, Beats, Volume)
 - **`src/components/PolyCanvas.tsx`** – Mikroraster (LCM-Grid-Canvas)
 - **`src/components/CircleViz.tsx`** – SVG Kreis-Visualizer mit Karaoke-Overlay
-- **`src/components/StepView.tsx`** – Step-Sequencer (geplant): rekursive Subdivision pro Beat, Design/Play-Toggle
+- **`src/components/StepView.tsx`** – Step-Sequencer: rekursive Subdivision, `forwardRef` + `StepViewHandle` (hitTest), pfad-basierter Leaf-Layout-Cache
 - **`src/components/KaraokeBar.tsx`** – Karaoke-Phrase-Leiste (Raster-Ansicht)
 - **`src/components/GlowSlider.tsx`** – Slider mit animiertem Halo
 - **`src/components/SettingsSheet.tsx`** – Bottom-Sheet: Sound-Wahl, Karaoke, Custom-Phrases
@@ -24,6 +24,9 @@ Zielplattform: primär **Android** (nativ), Web als Preview.
 - **Preset-Slots**: 8 Stück, gespeichert in AsyncStorage; Save-Mode via ✎-Button (`isSaveMode`)
 - **`savedGlowAnim`** (Animated.Value, 1→0 in 900 ms) steuert den gelben Glow-Impuls nach dem Speichern; Shadow liegt auf äußerem `Animated.View` (nicht auf `overflow:hidden`-Button)
 - **Haptics** via `expo-haptics`, immer in `try/catch` gewrappt
+- **Step-Modus** (`viewMode === 'step'`): eigener Scheduler (`setStepEvents`), kein LCM-Grid; `setMasterBpm` hat separaten `isStepMode`-Branch (Cycle-Skalierung + Cursor-Reset)
+- **Drag-and-Drop Toolbar** (Step-Modus): 5 `PanResponder`-Buttons in `useMemo`, Ghost-Element (`zIndex 9999`), `stepViewRef.current?.hitTest(x,y)` → `{ trackId, path: number[] }` → `updateNode`
+- **StepViewHandle**: `hitTest` nutzt `LeafEntry[]`-Cache (`{ path, rect }`); Registrierung via `onLayout` + `measureInWindow` (nicht `ref`-Callback, dieser feuert vor Layout); Präfix-Einträge werden beim Registrieren gefiltert
 
 ## Wichtige Referenz-Dateien
 | Datei | Wofür nachschlagen |
@@ -33,7 +36,8 @@ Zielplattform: primär **Android** (nativ), Web als Preview.
 | `CHANGELOG.md` | Was wann geändert wurde |
 | `TODO.md` | Offene Features + bekannte Bugs |
 | `RESPONSIVE_LAYOUT.md` | Proportionales No-Scroll-Layout: flex-Verhältnisse, scale-Formel, responsive Breakpoints |
-| `STEPSEQUENCER.md` | Step-Sequencer Konzept: rekursives Datenmodell, Flattening-Algorithmus, AudioEngine-Erweiterung |
+| `STEPSEQUENCER.md` | Step-Sequencer: Datenmodell, Flattening, AudioEngine-Extension, **Drag-and-Drop Toolbar** (seit v1.9.2) |
+| `KNOWN_PITFALLS.md` | **Vor jeder größeren Änderung lesen** – dokumentierte Fehler: Layout-Timing, Hook-Reihenfolge, Stale-Cache, Shadow-Props, Android-Gaps, Stale-Closures in PanResponder |
 | `/memories/repo/android-emulation-setup.md` | Build-Befehle für Android-Emulator |
 
 ## Code-Konventionen

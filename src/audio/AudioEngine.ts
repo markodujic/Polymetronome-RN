@@ -199,6 +199,23 @@ class AudioEngine {
       return;
     }
     const now = this.ctx.currentTime;
+
+    if (this.isStepMode) {
+      const oldCycleDur = this.beatsA * (60 / this.masterBpm);
+      this.masterBpm = newBpm;
+      this.recalcGrid();
+      const newCycleDur = this.beatsA * (60 / this.masterBpm);
+      // Epoch proportional skalieren (beat-basiert, analog zum LCM-Pfad)
+      const elapsed = Math.max(0, now - this.epoch);
+      const cycleNum = Math.floor(elapsed / oldCycleDur);
+      const posInCycle = elapsed - cycleNum * oldCycleDur;
+      this.epoch = now - cycleNum * newCycleDur - posInCycle * (newCycleDur / oldCycleDur);
+      // Cursors zurücksetzen – Scheduler scannt ab Zyklusanfang neu
+      this.stepCursorA = 0;
+      this.stepCursorB = 0;
+      return;
+    }
+
     const oldDur = this.cellDuration;
     this.masterBpm = newBpm;
     this.recalcGrid();

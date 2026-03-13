@@ -39,6 +39,13 @@
 
 ---
 
+## Recently Fixed (1.9.2)
+
+- [x] **Audio stoppt bei BPM-Änderung im Step-Modus** – `setMasterBpm` in AudioEngine hatte keinen `isStepMode`-Branch; LCM-Epoch-Berechnung legte Events in die Vergangenheit → Cursor-Race → Stille. Fix: Cycle-basierte Epoch-Skalierung + Cursor-Reset.
+- [x] **Step-Modus Toolbar** – MICRO/PULSE/HZ-Slider im Step-Modus durch 5 Drag-and-Drop-Tool-Buttons ersetzt (`÷3`, `÷3 –`, `×4`, Btn 4, Btn 5)
+- [x] **Drag-and-Drop auf Beat-Zellen** – PanResponder + Ghost-Element + `StepViewHandle.hitTest(x,y)` → pfad-basiertes Ansteuern einzelner Blatt-Knoten
+- [x] **A/B-Beschriftungsfelder aus StepView entfernt** – mehr Platz für Beat-Reihen
+
 ## Recently Fixed (1.9.0)
 
 - [x] **Step-Sequencer vollständig implementiert** – viewMode `'step'`, StepView.tsx, StepPattern-Typen, AudioEngine Step-Scheduler
